@@ -4,7 +4,7 @@
 # the effect of sterilization on risk of overweight/obese status.
 #
 # John Sahrmann
-# 20220419
+# 20220427
 
 
 # Preface ------------------------------------------------------------
@@ -30,7 +30,6 @@ survdat <- readr::read_rds(
 )
 dat <- basedat[survdat, on = c("id", "index_date")]
 rm(basedat, survdat)
-gc()
 
 
 # Data management ----------------------------------------------------
@@ -50,11 +49,7 @@ dat[,
   )
 ]
 
-dat %$%
-  table(sn, oo_event)
-dat %$%
-  tapply(oo_t2e, sn, summary)
-
+# Cap follow-up at five years.
 dat[,
   `:=`(
     oo_event = fifelse(oo_t2e > 1825, 0, oo_event),
@@ -67,22 +62,25 @@ dat %$%
 dat %$%
   tapply(oo_t2e, sn, summary)
 
+
+# Modeling -----------------------------------------------------------
+
+# Set options for Hmisc/rms analysis functions.
 Hmisc::units(dat$t2e_oo, "day")
 dd <- datadist(dat)
 options(datadist = "dd")
 
+# Create the survival outcome object for the O/O outcome.
+ooSurv <- dat %$% Surv(oo_t2e, oo_event)
 
-# Modeling -----------------------------------------------------------
-
-obSurv <- dat %$% Surv(obese_t2e, obese_event)
-
+# Fit the primary model.
 mod1 <- cph(
-  obSurv ~
+  ooSurv ~
     sn + rcs(ageYearsX, 5) + size + sex + mixed_breed +
-    wellness_plan + rcs(weight, 3) + rcs(visitsPerYear, 3) +
-    sn : rcs(ageYearsX, 5) + sn : size + sn : sex + sn : rcs(weight, 3) +
-    rcs(ageYearsX, 5) : size + rcs(weight, 3) : size +
-    sex : size + sex : rcs(weight, 3),
+    wellness_plan + rcs(weight, 4) + rcs(visitsPerYear, 3) +
+    sn : rcs(ageYearsX, 5) + sn : size + sn : sex + sn : rcs(weight, 4) +
+    rcs(ageYearsX, 5) : size + rcs(weight, 4) : size +
+    sex : size + sex : rcs(weight, 4),
   data = dat, x = TRUE, y = TRUE, surv = TRUE)
 
 anova(mod1)
@@ -187,7 +185,7 @@ p_ph_test <- survminer::ggcoxdiagnostics(
 
 
 start_time <- Sys.time()
-png("~/Desktop/phtest.png", height = 960*5, width = 960*5)
+png("~/Box Sync/phtest.png", height = 960*5, width = 960*5)
 p_ph_test
 dev.off()
 end_time <- Sys.time()
@@ -199,7 +197,7 @@ devPlot1 <- survminer::ggcoxdiagnostics(
   point.size = 0.1, hline.size = 1.5, sline.size = 1.5)
 
 start_time <- Sys.time()
-png("~/Desktop/devplot1.png", height = 960, width = 960)
+png("~/Box Sync/devplot1.png", height = 960, width = 960)
 devPlot1
 dev.off()
 end_time <- Sys.time()
@@ -210,19 +208,20 @@ devPlot2 <- survminer::ggcoxdiagnostics(
   point.size = 0.1, hline.size = 1.5, sline.size = 1.5)
 
 start_time <- Sys.time()
-png("~/Desktop/devplot2.png", height = 960, width = 960)
+png("~/Box Sync/devplot2.png", height = 960, width = 960)
 devPlot2 +
   geom_hline(lty = 2, col = "red", yintercept = c(1.96, -1.96))
 dev.off()
 end_time <- Sys.time()
 end_time - start_time
 
-start_time <- Sys.time()
 inf_plot <- survminer::ggcoxdiagnostics(
   mod1, type = "dfbetas", point.size = 0.1, hline.size = 1.5,
   sline.se = FALSE, sline.size = 1.5
 )
-png("~/Desktop/inf_plot", height = 960*5, width = 960*5)
+
+start_time <- Sys.time()
+png("~/Box Sync/inf_plot.png", height = 960*5, width = 960*5)
 inf_plot
 dev.off()
 end_time <- Sys.time()
