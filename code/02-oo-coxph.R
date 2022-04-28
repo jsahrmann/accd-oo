@@ -4,7 +4,7 @@
 # the effect of sterilization on risk of overweight/obese status.
 #
 # John Sahrmann
-# 20220427
+# 20220428
 
 
 # Preface ------------------------------------------------------------
@@ -185,7 +185,7 @@ p_ph_test <- survminer::ggcoxdiagnostics(
 
 
 start_time <- Sys.time()
-png("~/Box Sync/phtest.png", height = 960*5, width = 960*5)
+png("~/Box Sync/phtest2.png", height = 960*5, width = 960*5)
 p_ph_test
 dev.off()
 end_time <- Sys.time()
@@ -197,7 +197,7 @@ devPlot1 <- survminer::ggcoxdiagnostics(
   point.size = 0.1, hline.size = 1.5, sline.size = 1.5)
 
 start_time <- Sys.time()
-png("~/Box Sync/devplot1.png", height = 960, width = 960)
+png("~/Box Sync/devplot12.png", height = 960, width = 960)
 devPlot1
 dev.off()
 end_time <- Sys.time()
@@ -208,7 +208,7 @@ devPlot2 <- survminer::ggcoxdiagnostics(
   point.size = 0.1, hline.size = 1.5, sline.size = 1.5)
 
 start_time <- Sys.time()
-png("~/Box Sync/devplot2.png", height = 960, width = 960)
+png("~/Box Sync/devplot22.png", height = 960, width = 960)
 devPlot2 +
   geom_hline(lty = 2, col = "red", yintercept = c(1.96, -1.96))
 dev.off()
@@ -221,7 +221,7 @@ inf_plot <- survminer::ggcoxdiagnostics(
 )
 
 start_time <- Sys.time()
-png("~/Box Sync/inf_plot.png", height = 960*5, width = 960*5)
+png("~/Box Sync/inf_plot2.png", height = 960*5, width = 960*5)
 inf_plot
 dev.off()
 end_time <- Sys.time()
