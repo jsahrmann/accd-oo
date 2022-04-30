@@ -4,7 +4,7 @@
 # the effect of sterilization on risk of overweight/obese status.
 #
 # John Sahrmann
-# 20220428
+# 20220430
 
 
 # Preface ------------------------------------------------------------
@@ -86,10 +86,14 @@ mod1 <- cph(
 anova(mod1)
 summary(mod1)
 
+# Define reference points at which to generate hazard ratios for
+# effect plots.
 ref_ageYearsX <- c(0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6)
 ref_size <- levels(dat$size)
 ref_sex <- levels(dat$sex)
 
+# Initialize a list to hold the reference point values and hazard
+# ratios. We'll convert this to a tibble shortly.
 n <- length(ref_ageYearsX)*length(ref_size)*length(ref_sex)*3
 modelSummary <- list(
   ageYears = numeric(n),
@@ -102,6 +106,7 @@ modelSummary <- list(
   ub = numeric(n)
 )
 
+# Evaluate the model at the reference points.
 i <- 1
 for (thisAge in ref_ageYearsX) {
   for (thisSize in ref_size) {
@@ -112,6 +117,13 @@ for (thisAge in ref_ageYearsX) {
         modelSummary$size[[i]] <- thisSize
         modelSummary$sex[[i]] <- thisSex
         modelSummary$wtPntl[[i]] <- as.character(pntl)
+        # We still need to get actual values for `weight`. For integer
+        # reference values of age, use dogs of this size and sex and
+        # where rounded continuous age (`ageYearsX`) equals the
+        # reference value. For noninteger reference values of age, use
+        # dogs of this size and sex and where rounded continuous age
+        # equals the floor or ceiling of the reference value; then
+        # average the quartiles of the two ages.
         if (thisAge %% 1 == 0) {
           modelSummary$weight[[i]] <- dat[
             ageYearsT == thisAge & size == thisSize & sex == thisSex,
@@ -119,10 +131,12 @@ for (thisAge in ref_ageYearsX) {
         } else {
           modelSummary$weight[[i]] <- mean(
             c(dat[
-                ageYearsT == floor(thisAge) & size == thisSize & sex == thisSex,
+                ageYearsT == floor(thisAge) & size == thisSize &
+                sex == thisSex,
                 quantile(weight, pntl)],
               dat[
-                ageYearsT == ceiling(thisAge) & size == thisSize & sex == thisSex,
+                ageYearsT == ceiling(thisAge) & size == thisSize &
+                sex == thisSex,
                 quantile(weight, pntl)]
               )
           )
@@ -134,9 +148,10 @@ for (thisAge in ref_ageYearsX) {
           sex = modelSummary$sex[[i]],
           weight = modelSummary$weight[[i]]
         )
-        modelSummary$hr[[i]] <- est[10, "Effect"]
-        modelSummary$lb[[i]] <- est[10, "Lower 0.95"]
-        modelSummary$ub[[i]] <- est[10, "Upper 0.95"]
+        snRow <- which(rownames(est) == "sn - Spayed/neutered:Intact")
+        modelSummary$hr[[i]] <- est[snRow+1, "Effect"]
+        modelSummary$lb[[i]] <- est[snRow+1, "Lower 0.95"]
+        modelSummary$ub[[i]] <- est[snRow+1, "Upper 0.95"]
         i <- i + 1
       }
     }
@@ -173,59 +188,6 @@ modelSummaryTable %>%
   geom_pointrange() +
   geom_line() +
   facet_wrap(vars(size))
-
-r <- resid(mod1, type = "dfbetas")
-
-library(survminer)
-
-
-p_ph_test <- survminer::ggcoxdiagnostics(
-  mod1, type = "schoenfeld", sline = TRUE, sline.se = FALSE, point.size = 0.1)
-
-
-
-start_time <- Sys.time()
-png("~/Box Sync/phtest2.png", height = 960*5, width = 960*5)
-p_ph_test
-dev.off()
-end_time <- Sys.time()
-end_time - start_time              # 20 min
-
-
-devPlot1 <- survminer::ggcoxdiagnostics(
-  mod1, type = "martingale", sline.se = FALSE, ox.scale = "linear.predictions",
-  point.size = 0.1, hline.size = 1.5, sline.size = 1.5)
-
-start_time <- Sys.time()
-png("~/Box Sync/devplot12.png", height = 960, width = 960)
-devPlot1
-dev.off()
-end_time <- Sys.time()
-end_time - start_time              # 3.5 min
-
-devPlot2 <- survminer::ggcoxdiagnostics(
-  mod1, type = "deviance", sline.se = FALSE, ox.scale = "linear.predictions",
-  point.size = 0.1, hline.size = 1.5, sline.size = 1.5)
-
-start_time <- Sys.time()
-png("~/Box Sync/devplot22.png", height = 960, width = 960)
-devPlot2 +
-  geom_hline(lty = 2, col = "red", yintercept = c(1.96, -1.96))
-dev.off()
-end_time <- Sys.time()
-end_time - start_time
-
-inf_plot <- survminer::ggcoxdiagnostics(
-  mod1, type = "dfbetas", point.size = 0.1, hline.size = 1.5,
-  sline.se = FALSE, sline.size = 1.5
-)
-
-start_time <- Sys.time()
-png("~/Box Sync/inf_plot2.png", height = 960*5, width = 960*5)
-inf_plot
-dev.off()
-end_time <- Sys.time()
-end_time - start_time
 
 
 i <- 1
