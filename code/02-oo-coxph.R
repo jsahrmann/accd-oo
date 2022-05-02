@@ -4,12 +4,13 @@
 # the effect of sterilization on risk of overweight/obese status.
 #
 # John Sahrmann
-# 20220430
+# 20220502
 
 
 # Preface ------------------------------------------------------------
 
 library(data.table)
+library(EValue)
 library(Hmisc)
 library(magrittr)
 library(rms)
@@ -18,6 +19,7 @@ library(survival)
 
 # Input data ---------------------------------------------------------
 
+# Read and join the covariates and outcomes data sets.
 basedat <- readr::read_rds(
   paste0(
     "~/Dropbox/Banfield Dog Data/R Data Files (for analysis)/",
@@ -34,6 +36,8 @@ rm(basedat, survdat)
 
 # Data management ----------------------------------------------------
 
+# Define additional variables for analysis, and declar factor
+# variables.
 dat[,
     `:=`(
     ageYearsX = ageDays / 365.25,
@@ -57,8 +61,42 @@ dat[,
   )
 ]
 
-dat %$%
+# Table 2 counts (O/O)
+tab2oo_ct <- dat %$%
   table(sn, oo_event)
+# Table 2 row percentages (O/O)
+tab2oo_rpct <- dat %$%
+  round(proportions(table(sn, oo_event), margin = 1)*100)
+# Table 2 counts (obese)
+tab2obese_ct <- dat %$%
+  table(sn, obese_event)
+# Table 2 row percentages (obese)
+tab2obese_rpct <- dat %$%
+  round(proportions(table(sn, obese_event), margin = 1)*100)
+
+# Combine and format the text for each outcome.
+tab2oo <- paste0(
+  format(tab2oo_ct, big.mark = ","), " (", tab2oo_rpct, ")"
+)
+tab2obese <- paste0(
+  format(tab2obese_ct, big.mark = ","), " (", tab2obese_rpct, ")"
+)
+# Assemble into a matrix with two rows and four columns.
+table2 <- matrix(
+  c(tab2oo, tab2obese),
+  nrow = 2,
+  dimnames = list(
+    c("Intact", "Spayed/neutered"),
+    c("CensoredOO", "OutcomeOO", "CensoredObese", "OutcomeObese")
+  )
+) %>%
+  as.data.frame()
+
+# Save the final output.
+write.csv(
+  table2, file = "../output/table2.csv", row.names = TRUE
+)
+
 dat %$%
   tapply(oo_t2e, sn, summary)
 
@@ -89,7 +127,7 @@ summary(mod1)
 # Define reference points at which to generate hazard ratios for
 # effect plots.
 ref_ageYearsX <- c(0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6)
-ref_size <- levels(dat$size)
+ref_size <- c("Toy and Small", "Standard", "Medium", "Large", "Giant")
 ref_sex <- levels(dat$sex)
 
 # Initialize a list to hold the reference point values and hazard
@@ -161,6 +199,35 @@ for (thisAge in ref_ageYearsX) {
 modelSummaryTable <- as.data.table(modelSummary)
 modelSummaryTable
 
+x <- modelSummaryTable %$%
+  EValue::evalues.HR(est = hr, lo = lb, hi = ub, rare = FALSE)
+
+x <- modelSummaryTable[, .(hr, lb, ub)] %>%
+  apply(
+    MARGIN = 1,
+    FUN = function(x) {
+      EValue::evalues.HR(
+        est = x[["hr"]], lo = x[["lb"]], hi = x[["ub"]], rare = FALSE
+      )["E-values", , drop = FALSE] %>%
+        data.table::as.data.table()
+    }
+  )
+
+xx <- data.table::rbindlist(x)
+
+yy <- modelSummaryTable
+yy[,
+  `:=`(
+    e_val = ..xx$point,
+    e_val_lo = ..xx$lower
+  )
+]
+
+
+readr::write_excel_csv(
+  modelSummaryTable, "../data/oo-model-summary.csv"
+)
+
 modelSummaryTable[wtPntl == 0.5] %>%
   ggplot(
     aes(x = ageYears, y = hr, ymin = lb, ymax = ub, colour = size)
@@ -171,8 +238,7 @@ modelSummaryTable[wtPntl == 0.5] %>%
   facet_wrap(vars(sex))
 
 
-modelSummaryTable %>%
-  dplyr::filter(sex == "Male") %>%
+modelSummaryTable[sex == "Male"] %>%
   ggplot(
     aes(x = ageYears, y = hr, ymin = lb, ymax = ub, colour = wtPntl)
   ) +
@@ -180,8 +246,7 @@ modelSummaryTable %>%
   geom_line() +
   facet_wrap(vars(size))
 
-modelSummaryTable %>%
-  dplyr::filter(sex == "Female") %>%
+modelSummaryTable[sex == "Female"] %>%
   ggplot(
     aes(x = ageYears, y = hr, ymin = lb, ymax = ub, colour = wtPntl)
   ) +
