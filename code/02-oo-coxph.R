@@ -199,34 +199,47 @@ for (thisAge in ref_ageYearsX) {
 modelSummaryTable <- as.data.table(modelSummary)
 modelSummaryTable
 
-x <- modelSummaryTable %$%
-  EValue::evalues.HR(est = hr, lo = lb, hi = ub, rare = FALSE)
-
-x <- modelSummaryTable[, .(hr, lb, ub)] %>%
+# Get e-values for the HR estimates and lower 95% confidence
+# limits. Unfortunately, `EValue::evalues.HR` isn't vectorized, so we
+# instead wrap it in an ugly anonymous function. The output of
+# `EValue::evalues.HR` is a data.frame, with the first row being the
+# estimated risk ratio and the second being the e-values. We select
+# the row of e-values, prevent `[` from dropping a dimension, then
+# send the output to `data.table::as.data.table` and
+# `data.table::rbindlist` to produce a single data set.
+eVals <- modelSummaryTable[, .(hr, lb, ub)] %>%
   apply(
     MARGIN = 1,
     FUN = function(x) {
       EValue::evalues.HR(
         est = x[["hr"]], lo = x[["lb"]], hi = x[["ub"]], rare = FALSE
-      )["E-values", , drop = FALSE] %>%
+      )["E-values", c("point", "lower"), drop = FALSE] %>%
         data.table::as.data.table()
     }
-  )
+  ) %>%
+  data.table::rbindlist()
 
-xx <- data.table::rbindlist(x)
-
-yy <- modelSummaryTable
-yy[,
+# Add the e-values to the model summary table. Recall that `..` tells
+# data.table to look for the object in the global environment.
+modelSummaryTable[,
   `:=`(
-    e_val = ..xx$point,
-    e_val_lo = ..xx$lower
+    eVal = ..eVals$point,
+    eValLo = ..eVals$lower
   )
 ]
 
+# Output a full version of the model summary table.
+modelSummaryTable %>%
+  readr::write_csv("../output/sTableA-oo-modelSummary.csv")
 
-readr::write_excel_csv(
-  modelSummaryTable, "../data/oo-model-summary.csv"
-)
+# Output a condensed version of the model summary table using just the
+# median weight rows.
+modelSummaryTable[wtPntl == 0.5, !"wtPntl"] %>%
+  readr::write_csv("../output/sTableB-oo-modelSummaryMedWt.csv")
+
+
+# Plotting -----------------------------------------------------------
+
 
 modelSummaryTable[wtPntl == 0.5] %>%
   ggplot(
