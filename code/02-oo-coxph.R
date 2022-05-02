@@ -196,7 +196,13 @@ for (thisAge in ref_ageYearsX) {
   }
 }
 
-modelSummaryTable <- as.data.table(modelSummary)
+modelSummaryTable <- as.data.table(modelSummary)[,
+  size := factor(
+    size,
+    levels = c(
+      "Toy and Small", "Standard", "Medium", "Large", "Giant")
+  )
+]
 modelSummaryTable
 
 # Get e-values for the HR estimates and lower 95% confidence
@@ -240,33 +246,79 @@ modelSummaryTable[wtPntl == 0.5, !"wtPntl"] %>%
 
 # Plotting -----------------------------------------------------------
 
-
-modelSummaryTable[wtPntl == 0.5] %>%
-  ggplot(
-    aes(x = ageYears, y = hr, ymin = lb, ymax = ub, colour = size)
-  ) +
-  geom_pointrange() +
-  geom_line() +
-  scale_colour_discrete("Breed Size") +
-  facet_wrap(vars(sex))
-
-
-modelSummaryTable[sex == "Male"] %>%
-  ggplot(
-    aes(x = ageYears, y = hr, ymin = lb, ymax = ub, colour = wtPntl)
-  ) +
-  geom_pointrange() +
-  geom_line() +
-  facet_wrap(vars(size))
-
+cairo_pdf(
+  "../output/fig/figA-oo-femaleAllWt.pdf", width = 7, height = 7
+)
 modelSummaryTable[sex == "Female"] %>%
   ggplot(
     aes(x = ageYears, y = hr, ymin = lb, ymax = ub, colour = wtPntl)
   ) +
   geom_pointrange() +
   geom_line() +
-  facet_wrap(vars(size))
+  scale_colour_discrete("Weight Quartile") +
+  labs(title = "Female Dogs") +
+  xlab("\nAge at Index") +
+  ylab("Hazard Ratio of Spayed/Neutered vs. Intact\n") +
+  facet_wrap(vars(size)) +
+  theme_gray(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
 
+cairo_pdf(
+  "../output/fig/figA-oo-maleAllWt.pdf", width = 7, height = 7
+)
+modelSummaryTable[sex == "Male"] %>%
+  ggplot(
+    aes(x = ageYears, y = hr, ymin = lb, ymax = ub, colour = wtPntl)
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  scale_colour_discrete("Weight Quartile") +
+  labs(title = "Male Dogs") +
+  xlab("\nAge at Index") +
+  ylab("Hazard Ratio of Spayed/Neutered vs. Intact\n") +
+  facet_wrap(vars(size)) +
+  theme_gray(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+pdftools::pdf_combine(
+  c("../output/fig/figA-oo-femaleAllWt.pdf",
+    "../output/fig/figA-oo-maleAllWt.pdf"),
+  "../output/fig/figA-oo-allWt.pdf"
+)
+file.remove(
+  c("../output/fig/figA-oo-femaleAllWt.pdf",
+    "../output/fig/figA-oo-maleAllWt.pdf")
+)
+
+
+cairo_pdf(
+  "../output/fig/figB-oo-medWt.pdf", width = 7, height = 5
+)
+modelSummaryTable[wtPntl == 0.5] %>%
+  ggplot(
+    aes(x = ageYears, y = hr, ymin = lb, ymax = ub, colour = size)
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  labs(title = "Dogs at Median Weight") +
+  xlab("\nAge at Index") +
+  ylab("Hazard Ratio of Spayed/Neutered vs. Intact\n") +
+  scale_colour_ordinal("Breed Size") +
+  facet_wrap(vars(sex)) +
+  theme_gray(base_size = 11) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+
+# Crude estimates ----------------------------------------------------
 
 i <- 1
 for (thisAge in ref_ageYearsX) {
