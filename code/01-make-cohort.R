@@ -52,7 +52,7 @@ visits_all[, (date_cols) := lapply(.SD, mdy), .SDcols = date_cols]
 
 # Read the breed sizes data set.
 breedSizes <- readxl::read_excel(
-  "./etc/Banfield data breeds - final recommendations.xlsx",
+  "../data/Banfield data breeds - final recommendations.xlsx",
   range = "A1:I506"
 ) %>%
   select(
