@@ -4,7 +4,7 @@
 # the effect of sterilization on risk of overweight/obese status.
 #
 # John Sahrmann
-# 20220502
+# 20220508
 
 
 # Preface ------------------------------------------------------------
@@ -316,6 +316,63 @@ modelSummaryTable[wtPntl == 0.5] %>%
     legend.position = "bottom"
   )
 dev.off()
+
+
+# Age effect among SN ------------------------------------------------
+
+ggplot(
+  Predict(
+    mod1,
+    ageYearsX, size = "Toy and Small", sex = "Male", weight = 9.8,
+    sn = "Spayed/neutered"
+  )
+)
+
+n2 <- length(ref_size) * length(ref_ageYearsX) * length(ref_ageYearsX)
+ageEffectAmongSN <- list(
+  ageYears1 = numeric(n2), ageYears2 = numeric(n2),
+  size = numeric(n2)
+)
+
+# Evaluate the model at the reference points.
+i2 <- 1
+for (thisSize in ref_size) {
+  for (thisAge in ref_ageYearsX) {
+    for (thatAge in ref_ageYearsX) {
+      ageEffectAmongSN$size[[i2]] <- thisSize
+      ageEffectAmongSN$ageYears1[[i2]] <- thisAge
+      ageEffectAmongSN$ageYears2[[i2]] <- thatAge
+      est <- summary(
+        mod1,
+        size = ageEffectAmongSN$size[[i2]],
+        ageYearsX = c(
+          ageEffectAmongSN$ageYears1[[i2]],
+          ageEffectAmongSN$ageYears2[[i2]]
+        )
+      )
+      ageRow <- which(rownames(est) == "ageYearsX")
+      ageEffectAmongSN$hr[[i2]] <- est[ageRow+1, "Effect"]
+      ageEffectAmongSN$lo[[i2]] <- est[ageRow+1, "Lower 0.95"]
+      ageEffectAmongSN$hi[[i2]] <- est[ageRow+1, "Upper 0.95"]
+      i2 <- i2 + 1
+    }
+  }
+}
+
+ageEffectAmongSN <- as.data.table(ageEffectAmongSN)[,
+  size := factor(
+    size,
+    levels = c(
+      "Toy and Small", "Standard", "Medium", "Large", "Giant")
+  )
+]
+ageEffectAmongSN
+
+est <- summary(
+  mod1,
+  ageYearsX = c(0.5, 0.5), size = "Toy and Small", sex = "Male",
+  weight = 9.8, sn = "Spayed/neutered"
+)
 
 
 # Crude estimates ----------------------------------------------------
