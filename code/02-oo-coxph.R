@@ -4,7 +4,7 @@
 # the effect of sterilization on risk of overweight/obese status.
 #
 # John Sahrmann
-# 20220508
+# 20220509
 
 
 # Preface ------------------------------------------------------------
@@ -351,28 +351,59 @@ for (thisSize in ref_size) {
         )
       )
       ageRow <- which(rownames(est) == "ageYearsX")
-      ageEffectAmongSN$hr[[i2]] <- est[ageRow+1, "Effect"]
-      ageEffectAmongSN$lo[[i2]] <- est[ageRow+1, "Lower 0.95"]
-      ageEffectAmongSN$hi[[i2]] <- est[ageRow+1, "Upper 0.95"]
+      ageEffectAmongSN$hr[i2] <- est[ageRow+1, "Effect"]
+      ageEffectAmongSN$lo[i2] <- est[ageRow+1, "Lower 0.95"]
+      ageEffectAmongSN$hi[i2] <- est[ageRow+1, "Upper 0.95"]
       i2 <- i2 + 1
     }
   }
 }
 
-ageEffectAmongSN <- as.data.table(ageEffectAmongSN)[,
-  size := factor(
-    size,
-    levels = c(
-      "Toy and Small", "Standard", "Medium", "Large", "Giant")
+agePts <- c(0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0)
+ageEffectAmongSN <- as.data.table(ageEffectAmongSN)[
+  ageYears1 %in% agePts & ageYears2 %in% agePts
+][,
+  `:=`(
+    size = factor(
+      size,
+      levels = c(
+        "Toy and Small", "Standard", "Medium", "Large", "Giant")
+    ),
+    ageYears1 = factor(
+      ageYears1,
+      levels = agePts,
+      labels = paste("Spayed/neutered at", agePts, "years")
+    )
   )
 ]
+
 ageEffectAmongSN
 
-est <- summary(
-  mod1,
-  ageYearsX = c(0.5, 0.5), size = "Toy and Small", sex = "Male",
-  weight = 9.8, sn = "Spayed/neutered"
+
+# Plotting ------------------------
+
+cairo_pdf(
+  "../output/fig/fig-age-effect-among-SN.pdf", width = 10, height = 7
 )
+ageEffectAmongSN %>%
+  ggplot(
+    aes(x = ageYears2, y = hr, ymin = lo, ymax = hi, colour = size)
+  ) +
+  geom_pointrange(size = 0.25) +
+  geom_line() +
+  xlab("\nAge at Spay/neuter") +
+  ylab("Hazard Ratio of Age\n") +
+  scale_y_log10() +
+  scale_colour_ordinal("Breed Size") +
+  facet_wrap(vars(ageYears1), nrow = 2) +
+  theme_gray(base_size = 11) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+ageEffectAmongSN[, .(size, ageYears1, ageYears2, hr, lo, hi)] %>%
+readr::write_csv("../output/table-age-effect-among-SN.csv")
 
 
 # Crude estimates ----------------------------------------------------
