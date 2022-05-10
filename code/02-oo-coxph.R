@@ -383,7 +383,8 @@ ageEffectAmongSN
 # Plotting ------------------------
 
 cairo_pdf(
-  "../output/fig/fig-age-effect-among-SN.pdf", width = 10, height = 7
+  "../output/fig/fig-oo-age-effect-among-SN.pdf",
+  width = 10, height = 7
 )
 ageEffectAmongSN %>%
   ggplot(
@@ -403,7 +404,7 @@ ageEffectAmongSN %>%
 dev.off()
 
 ageEffectAmongSN[, .(size, ageYears1, ageYears2, hr, lo, hi)] %>%
-readr::write_csv("../output/table-age-effect-among-SN.csv")
+readr::write_csv("../output/table-oo-age-effect-among-SN.csv")
 
 
 # Crude estimates ----------------------------------------------------

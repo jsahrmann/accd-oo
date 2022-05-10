@@ -4,7 +4,7 @@
 # of the effect of sterilization on risk of overweight/obese status.
 #
 # John Sahrmann
-# 20220503
+# 20220509
 
 
 # Preface ------------------------------------------------------------
@@ -311,6 +311,95 @@ modelSummaryTable[wtPntl == 0.5] %>%
     legend.position = "bottom"
   )
 dev.off()
+
+
+# Age effect among SN ------------------------------------------------
+
+ggplot(
+  Predict(
+    mod1,
+    ageYearsX, size = "Toy and Small", sex = "Male", weight = 9.8,
+    sn = "Spayed/neutered"
+  )
+)
+
+n2 <- length(ref_size) * length(ref_ageYearsX) * length(ref_ageYearsX)
+ageEffectAmongSN <- list(
+  ageYears1 = numeric(n2), ageYears2 = numeric(n2),
+  size = numeric(n2)
+)
+
+# Evaluate the model at the reference points.
+i2 <- 1
+for (thisSize in ref_size) {
+  for (thisAge in ref_ageYearsX) {
+    for (thatAge in ref_ageYearsX) {
+      ageEffectAmongSN$size[[i2]] <- thisSize
+      ageEffectAmongSN$ageYears1[[i2]] <- thisAge
+      ageEffectAmongSN$ageYears2[[i2]] <- thatAge
+      est <- summary(
+        mod1,
+        size = ageEffectAmongSN$size[[i2]],
+        ageYearsX = c(
+          ageEffectAmongSN$ageYears1[[i2]],
+          ageEffectAmongSN$ageYears2[[i2]]
+        )
+      )
+      ageRow <- which(rownames(est) == "ageYearsX")
+      ageEffectAmongSN$hr[i2] <- est[ageRow+1, "Effect"]
+      ageEffectAmongSN$lo[i2] <- est[ageRow+1, "Lower 0.95"]
+      ageEffectAmongSN$hi[i2] <- est[ageRow+1, "Upper 0.95"]
+      i2 <- i2 + 1
+    }
+  }
+}
+
+agePts <- c(0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0)
+ageEffectAmongSN <- as.data.table(ageEffectAmongSN)[
+  ageYears1 %in% agePts & ageYears2 %in% agePts
+][,
+  `:=`(
+    size = factor(
+      size,
+      levels = c(
+        "Toy and Small", "Standard", "Medium", "Large", "Giant")
+    ),
+    ageYears1 = factor(
+      ageYears1,
+      levels = agePts,
+      labels = paste("Spayed/neutered at", agePts, "years")
+    )
+  )
+]
+
+ageEffectAmongSN
+
+
+# Plotting ------------------------
+
+cairo_pdf(
+  "../output/fig/fig-obese-age-effect-among-SN.pdf",
+  width = 10, height = 7
+)
+ageEffectAmongSN %>%
+  ggplot(
+    aes(x = ageYears2, y = hr, ymin = lo, ymax = hi, colour = size)
+  ) +
+  geom_pointrange(size = 0.25) +
+  geom_line() +
+  xlab("\nAge at Spay/neuter") +
+  ylab("Hazard Ratio of Age\n") +
+  scale_y_log10() +
+  scale_colour_ordinal("Breed Size") +
+  facet_wrap(vars(ageYears1), nrow = 2) +
+  theme_gray(base_size = 11) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+ageEffectAmongSN[, .(size, ageYears1, ageYears2, hr, lo, hi)] %>%
+readr::write_csv("../output/table-obese-age-effect-among-SN.csv")
 
 
 # Crude estimates ----------------------------------------------------
