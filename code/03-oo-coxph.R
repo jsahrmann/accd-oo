@@ -1,13 +1,13 @@
-# Front matter -------------------------------------------------------
+# Header -------------------------------------------------------------
 #
-# Primary Cox proportional hazards modeling for the ACC&D analysis of
-# the effect of sterilization on risk of overweight/obese status.
+# Fit a Cox proportional hazards model as part of the primary analysis
+# for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220509
+# 20220510
 
 
-# Preface ------------------------------------------------------------
+# Setup --------------------------------------------------------------
 
 library(data.table)
 library(EValue)
@@ -19,86 +19,7 @@ library(survival)
 
 # Input data ---------------------------------------------------------
 
-# Read and join the covariates and outcomes data sets.
-basedat <- readr::read_rds(
-  paste0(
-    "~/Dropbox/Banfield Dog Data/R Data Files (for analysis)/",
-    "dogs_final.rds")
-)
-survdat <- readr::read_rds(
-  paste0(
-    "~/Dropbox/Banfield Dog Data/R Data Files (for analysis)/",
-    "dogs_outcomeAndCensoringDates.rds")
-)
-dat <- basedat[survdat, on = c("id", "index_date")]
-rm(basedat, survdat)
-
-
-# Data management ----------------------------------------------------
-
-# Define additional variables for analysis, and declar factor
-# variables.
-dat[,
-    `:=`(
-    ageYearsX = ageDays / 365.25,
-    ageYearsT = floor(ageDays / 365.25),
-    ageYearsR = round(ageDays / 365.25),
-    sex = factor(sex, levels = c("Male", "Female")),
-    mixed_breed = factor(mixed_breed, levels = c("N", "Y")),
-    size = factor(
-      size, levels = c(
-        "Standard", "Toy and Small", "Medium", "Large", "Giant")),
-    sn = factor(
-      sn, levels = 0:1, labels = c("Intact", "Spayed/neutered"))    
-  )
-]
-
-# Cap follow-up at five years.
-dat[,
-  `:=`(
-    oo_event = fifelse(oo_t2e > 1825, 0, oo_event),
-    oo_t2e = fifelse(oo_t2e > 1825, 1825, oo_t2e)
-  )
-]
-
-# Table 2 counts (O/O)
-tab2oo_ct <- dat %$%
-  table(sn, oo_event)
-# Table 2 row percentages (O/O)
-tab2oo_rpct <- dat %$%
-  round(proportions(table(sn, oo_event), margin = 1)*100)
-# Table 2 counts (obese)
-tab2obese_ct <- dat %$%
-  table(sn, obese_event)
-# Table 2 row percentages (obese)
-tab2obese_rpct <- dat %$%
-  round(proportions(table(sn, obese_event), margin = 1)*100)
-
-# Combine and format the text for each outcome.
-tab2oo <- paste0(
-  format(tab2oo_ct, big.mark = ","), " (", tab2oo_rpct, ")"
-)
-tab2obese <- paste0(
-  format(tab2obese_ct, big.mark = ","), " (", tab2obese_rpct, ")"
-)
-# Assemble into a matrix with two rows and four columns.
-table2 <- matrix(
-  c(tab2oo, tab2obese),
-  nrow = 2,
-  dimnames = list(
-    c("Intact", "Spayed/neutered"),
-    c("CensoredOO", "OutcomeOO", "CensoredObese", "OutcomeObese")
-  )
-) %>%
-  as.data.frame()
-
-# Save the final output.
-write.csv(
-  table2, file = "../output/table2.csv", row.names = TRUE
-)
-
-dat %$%
-  tapply(oo_t2e, sn, summary)
+source("./02-read-cohort.R")
 
 
 # Modeling -----------------------------------------------------------
@@ -108,21 +29,21 @@ Hmisc::units(dat$t2e_oo, "day")
 dd <- datadist(dat)
 options(datadist = "dd")
 
-# Create the survival outcome object for the O/O outcome.
-ooSurv <- dat %$% Surv(oo_t2e, oo_event)
+# Create the survival outcome object.
+surv_oo <- dat %$% Surv(oo_t2e, oo_event)
 
 # Fit the primary model.
-mod1 <- cph(
-  ooSurv ~
+model1 <- cph(
+  surv_oo ~
     sn + rcs(ageYearsX, 5) + size + sex + mixed_breed +
-    wellness_plan + rcs(weight, 4) + rcs(visitsPerYear, 3) +
-    sn : rcs(ageYearsX, 5) + sn : size + sn : sex + sn : rcs(weight, 4) +
-    rcs(ageYearsX, 5) : size + rcs(weight, 4) : size +
-    sex : size + sex : rcs(weight, 4),
+    wellness_plan + rcs(weight, 3) + rcs(visitsPerYear, 3) +
+    sn : rcs(ageYearsX, 5) + sn : size + sn : sex + sn : rcs(weight, 3) +
+    size : rcs(ageYearsX, 5) + size : rcs(weight, 3) + size : sex +
+    sex : rcs(ageYearsX, 5) + sex : rcs(weight, 3),
   data = dat, x = TRUE, y = TRUE, surv = TRUE)
 
-anova(mod1)
-summary(mod1)
+anova(model1)
+summary(model1)
 
 # Define reference points at which to generate hazard ratios for
 # effect plots.
@@ -180,7 +101,7 @@ for (thisAge in ref_ageYearsX) {
           )
         }
         est <- summary(
-          mod1,
+          model1,
           ageYearsX = modelSummary$ageYears[[i]],
           size = modelSummary$size[[i]],
           sex = modelSummary$sex[[i]],
@@ -322,7 +243,7 @@ dev.off()
 
 ggplot(
   Predict(
-    mod1,
+    model1,
     ageYearsX, size = "Toy and Small", sex = "Male", weight = 9.8,
     sn = "Spayed/neutered"
   )
@@ -343,7 +264,7 @@ for (thisSize in ref_size) {
       ageEffectAmongSN$ageYears1[[i2]] <- thisAge
       ageEffectAmongSN$ageYears2[[i2]] <- thatAge
       est <- summary(
-        mod1,
+        model1,
         size = ageEffectAmongSN$size[[i2]],
         ageYearsX = c(
           ageEffectAmongSN$ageYears1[[i2]],
