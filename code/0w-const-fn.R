@@ -3,7 +3,7 @@
 # Define constants and helper functions.
 #
 # John Sahrmann
-# 20220510
+# 20220515
 
 
 # Setup --------------------------------------------------------------
@@ -13,58 +13,36 @@ source("./02-read-cohort.R")
 
 # Function definitions -----------------------------------------------
 
-
-age_ref_pts <- seq(0.5, max(dat$ageYearsX), by = 0.5)
-size_ref_pts <- levels(dat$size)
-sex_ref_pts <- levels(dat$sex)
-wt_pctl <- c(.25, .5, .75)
-
-x <- expand.grid(age = age_ref_pts, size = size_ref_pts, sex = sex_ref_pts, wt_pctl = wt_pctl)
-
-
-get_wt_qntl <- function(x) {
-  age <- as.double(x[["age"]])
-  size <- x[["size"]]
-  sex <- x[["sex"]]
-  wt_pctl <- as.double(x[["wt_pctl"]])
-  print(paste(age, size, sex, wt_pctl))
-  if (age %% 1 == 0) {
-    print(dat[ageYearsR == age & size == size & sex == sex])
-    dat[ageYearsR == age & size == size & sex == sex, quantile(weight, wt_pctl)]
-  } else {
-    mean(
-      c(dat[ageYearsR == floor(age) & size == size & sex == sex, quantile(weight, wt_pctl)],
-        dat[ageYearsR == ceiling(age) & size == size & sex == sex, quantile(weight, wt_pctl)]))
-  }
-}
-
-get_wt_qntl <- function(x) {
-  this_age <- as.double(x[["age"]])
-  this_size <- x[["size"]]
-  this_sex <- x[["sex"]]
-  this_wt_pctl <- as.double(x[["wt_pctl"]])
-  print(paste(this_age, this_size, this_sex, this_wt_pctl))
-  if (this_age %% 1 == 0) {
-    dat[ageYearsT == this_age & size == this_size & sex == this_sex, quantile(weight, this_wt_pctl)]
-  } else {
-    mean(
-      c(dat[ageYearsT == floor(this_age) & size == this_size & sex == this_sex, quantile(weight, this_wt_pctl)],
-        dat[ageYearsT == ceiling(this_age) & size == this_size & sex == this_sex, quantile(weight, this_wt_pctl)]))
-  }
-}
-
-
-xx <- head(x, n = 20)
-xx$weight <- apply(xx, 1, get_wt_qntl)
-
-
-
+#' Produce a data set for use as an input for effect plots for the
+#' main SN analysis.
+#'
+#' @param sizes Character vector of breed sizes. Default `NULL` means
+#'   all sizes.
+#' @param sexes Character vector of sexes. Default `NULL` means all
+#'   sexes.
+#' @param ages Numeric vector of ages. Default `NULL` means all ages
+#'   from 0.5 years to `max(ageYearsX)` years in increments of 0.5
+#'   years.
+#' @param weight_pctls Numeric vector of weight percentiles. Default
+#'   `NULL` means 25, 50, and 75, i.e., 1st quartile, median, and
+#'   third quartile.
+#' @return A data.frame with a row for each combination of the input
+#'   values.
+#' @examples
+#' define_sn_reference_points()
+#' define_sn_reference_points(
+#'   ages = seq(0.5, 6.5, by = 0.5), weight_pctls = 50)
 define_sn_reference_points <- function(
   sizes = NULL, sexes = NULL, ages = NULL, weight_pctls = NULL
 ) {
   # Define a helper function to get the actual values of weight for
   # the requested percentile.
   get_wt_qntl <- function(x) {
+    # For integer values of age, use records of this size and sex and
+    # where rounded age equals the reference value. For noninteger
+    # values of age, use records of this size and sex and where
+    # rounded age equals the floor or ceiling of the reference value;
+    # then average the weights at the quantiles of the two ages.
     if (as.double(x[["age"]]) %% 1 == 0) {
       dat[
         ageYearsR == as.double(x[["age"]]) & size == x[["size"]]
@@ -112,14 +90,21 @@ define_sn_reference_points <- function(
 }
 
 
-
-ref <- data.table::as.data.table(
-  define_sn_reference_points(ages = seq(0.5, 6, by = 0.5)))
-
-ref <- data.table::as.data.table(
-  define_sn_reference_points(ages = seq(0.5, 6, by = 0.5), weight_pctls = 50))
-
-
+#' Produce a data set for use as an input for effect plots for the age
+#' effect among SN analysis.
+#'
+#' @param sizes Character vector of breed sizes. Default `NULL` means
+#'   all sizes.
+#' @param sexes Character vector of sexes. Default `NULL` means all
+#'   sexes.
+#' @param ages Numeric vector of ages. Default `NULL` means all ages
+#'   from 0.5 years to `max(ageYearsX)` years in increments of 0.5
+#'   years.
+#' @return A data.frame with a row for each combination of the input
+#'   values.
+#' @examples
+#' define_age_reference_points()
+#' define_age_reference_points(ages = seq(0.5, 6.5, by = 0.5))
 define_age_reference_points <- function(
   sizes = NULL, sexes = NULL, ages = NULL
 ) {
@@ -139,15 +124,85 @@ define_age_reference_points <- function(
     age_ref_pts <- seq(0.5, max(dat$ageYearsX), by = 0.5)
   }
 
-  ## ref_ds <- expand.grid(
-  ##   size = size_ref_pts, sex = sex_ref_pts,
-  ##   reference_age = age_ref_pts, comparator_age = age_ref_pts)
   ref_ds <- expand.grid(
     comparator_age = age_ref_pts, reference_age = age_ref_pts,
     sex = sex_ref_pts, size = size_ref_pts)
   ref_ds[, c("size", "sex", "reference_age", "comparator_age")]
 }
 
-ref_age_among_sn <- data.table::as.data.table(
-  define_age_reference_points(ages = seq(0.5, 3, by = 0.5)))
 
+evaluate_sn_reference_points <- function(x, model) {
+  tbl <- summary(
+    model,
+    size = x[["size"]],
+    sex = x[["sex"]],
+    ageYearsX = as.numeric(x[["age"]]),
+    weight = as.numeric(x[["weight"]])
+  )
+  sn_row <- which(rownames(tbl) == "sn - Spayed/neutered:Intact")
+  hr <- tbl[sn_row+1, "Effect"]
+  lo <- tbl[sn_row+1, "Lower 0.95"]
+  hi <- tbl[sn_row+1, "Upper 0.95"]
+  t(c(hr = hr, lo = lo, hi = hi))
+}
+
+
+evaluate_sn_reference_points <- function(reference_points, model) {
+  eval_at <- function(x) {
+    tbl <- summary(
+      model,
+      size = x[["size"]],
+      sex = x[["sex"]],
+      ageYearsX = as.numeric(x[["age"]]),
+      weight = as.numeric(x[["weight"]])
+    )
+    sn_row <- which(rownames(tbl) == "sn - Spayed/neutered:Intact")
+    hr <- tbl[sn_row+1, "Effect"]
+    lo <- tbl[sn_row+1, "Lower 0.95"]
+    hi <- tbl[sn_row+1, "Upper 0.95"]
+    c(hr = hr, lo = lo, hi = hi)
+  }
+
+  res <- apply(reference_points, 1, eval_at)
+  t(res)
+}
+
+
+evaluate_age_among_sn_reference_points <- function(
+  reference_points, model
+) {
+  eval_at <- function(x) {
+    tbl <- summary(
+      model,
+      sn = "Spayed/neutered",
+      size = x[["size"]],
+      sex = x[["sex"]],
+      ageYearsX = c(
+        as.numeric(x[["reference_age"]]),
+        as.numeric(x[["comparator_age"]]))
+    )
+    age_row <- which(rownames(tbl) == "ageYearsX")
+    hr <- tbl[age_row+1, "Effect"]
+    lo <- tbl[age_row+1, "Lower 0.95"]
+    hi <- tbl[age_row+1, "Upper 0.95"]
+    c(hr = hr, lo = lo, hi = hi)
+  }
+
+  res <- apply(reference_points, 1, eval_at)
+  t(res)
+}
+
+
+compute_e_values <- function(estimates, rare = FALSE) {
+  e_val <- function(x) {
+    suppressMessages(
+      EValue::evalues.HR(
+        est = x[["hr"]], lo = x[["lo"]], hi = x[["hi"]], rare = rare
+      )["E-values", c("point", "lower"), drop = FALSE]
+    )
+  }
+
+  res <- apply(estimates, 1, e_val)
+  dimnames(res) <- list(c("e_val", "e_val_lo"), NULL)
+  t(res)
+}

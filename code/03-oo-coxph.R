@@ -4,7 +4,7 @@
 # for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220510
+# 20220516
 
 
 # Setup --------------------------------------------------------------
@@ -19,6 +19,7 @@ library(survival)
 
 # Input data ---------------------------------------------------------
 
+source("./0w-const-fn.R")
 source("./02-read-cohort.R")
 
 
@@ -45,86 +46,80 @@ model1 <- cph(
 anova(model1)
 summary(model1)
 
-# Define reference points at which to generate hazard ratios for
-# effect plots.
-ref_ageYearsX <- c(0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6)
-ref_size <- c("Toy and Small", "Standard", "Medium", "Large", "Giant")
-ref_sex <- levels(dat$sex)
 
-# Initialize a list to hold the reference point values and hazard
-# ratios. We'll convert this to a tibble shortly.
-n <- length(ref_ageYearsX)*length(ref_size)*length(ref_sex)*3
-modelSummary <- list(
-  ageYears = numeric(n),
-  size = character(n),
-  sex = character(n),
-  wtPntl = character(n),
-  weight = numeric(n),
-  hr = numeric(n),
-  lb = numeric(n),
-  ub = numeric(n)
+# SN effect -----------------------
+
+sn_ref_pts <- as.data.table(
+  define_sn_reference_points(ages = seq(0.5, 6, by = 0.5)))
+
+sn_est <- evaluate_sn_reference_points(sn_ref_pts, model1)
+sn_e_val <- compute_e_values(sn_est)
+
+sn_results <- cbind(sn_ref_pts, sn_est, sn_e_val)
+
+
+# Age effect among SN -------------
+
+age_among_sn_ref_pts <- data.table::as.data.table(
+  define_age_reference_points(ages = seq(0.5, 6, by = 0.5)))
+
+age_among_sn_est <- evaluate_age_among_sn_reference_points(
+  age_among_sn_ref_pts, model1)
+age_among_sn_e_val <- compute_e_values(age_among_sn_est)
+
+age_among_sn_results <- cbind(
+  age_among_sn_ref_pts, age_among_sn_est, age_among_sn_e_val)
+
+
+# Exports ------------------------------------------------------------
+
+save(
+  sn_results, age_among_sn_results,
+  file = "../data/oo-results.Rdata"
 )
 
-# Evaluate the model at the reference points.
-i <- 1
-for (thisAge in ref_ageYearsX) {
-  for (thisSize in ref_size) {
-    for (thisSex in ref_sex) {
-      for (pntl in c(.25, .5, .75)) {
-        if (i %% 10 == 0) print(i)
-        modelSummary$ageYears[[i]] <- thisAge
-        modelSummary$size[[i]] <- thisSize
-        modelSummary$sex[[i]] <- thisSex
-        modelSummary$wtPntl[[i]] <- as.character(pntl)
-        # We still need to get actual values for `weight`. For integer
-        # reference values of age, use dogs of this size and sex and
-        # where rounded continuous age (`ageYearsX`) equals the
-        # reference value. For noninteger reference values of age, use
-        # dogs of this size and sex and where rounded continuous age
-        # equals the floor or ceiling of the reference value; then
-        # average the quartiles of the two ages.
-        if (thisAge %% 1 == 0) {
-          modelSummary$weight[[i]] <- dat[
-            ageYearsT == thisAge & size == thisSize & sex == thisSex,
-            quantile(weight, pntl)]
-        } else {
-          modelSummary$weight[[i]] <- mean(
-            c(dat[
-                ageYearsT == floor(thisAge) & size == thisSize &
-                sex == thisSex,
-                quantile(weight, pntl)],
-              dat[
-                ageYearsT == ceiling(thisAge) & size == thisSize &
-                sex == thisSex,
-                quantile(weight, pntl)]
-              )
-          )
-        }
-        est <- summary(
-          model1,
-          ageYearsX = modelSummary$ageYears[[i]],
-          size = modelSummary$size[[i]],
-          sex = modelSummary$sex[[i]],
-          weight = modelSummary$weight[[i]]
-        )
-        snRow <- which(rownames(est) == "sn - Spayed/neutered:Intact")
-        modelSummary$hr[[i]] <- est[snRow+1, "Effect"]
-        modelSummary$lb[[i]] <- est[snRow+1, "Lower 0.95"]
-        modelSummary$ub[[i]] <- est[snRow+1, "Upper 0.95"]
-        i <- i + 1
-      }
-    }
-  }
-}
 
-modelSummaryTable <- as.data.table(modelSummary)[,
-  size := factor(
-    size,
-    levels = c(
-      "Toy and Small", "Standard", "Medium", "Large", "Giant")
-  )
-]
-modelSummaryTable
+# SN effect -----------------------
+
+# Smallest difference in risk by SN
+sn_results[wt_pctl == 50][which.min(hr)]
+# Largest difference in risk by SN
+sn_results[wt_pctl == 50][which.max(hr)]
+
+round(sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
+round(sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
+
+# E-values
+sn_results[lo > 1][which.min(e_val)]
+sn_results[lo > 1][which.max(e_val)]
+
+write.table(
+  sn_results, file = "../output/table-oo-sn-effect-all-weights.csv",
+  sep = ",", row.names = FALSE
+)
+
+
+# Age effect among SN -------------
+
+# Smallest difference in risk by SN
+age_among_sn_results[wt_pctl == 50][which.min(hr)]
+# Largest difference in risk by SN
+age_among_sn_results[wt_pctl == 50][which.max(hr)]
+
+round(age_among_sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
+round(age_among_sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
+
+# E-values
+age_among_sn_results[lo > 1][which.min(e_val)]
+age_among_sn_results[lo > 1][which.max(e_val)]
+
+write.table(
+  age_among_sn_results,
+  file = "../output/table-oo-age-effect-among-SN.csv-all-years.csv",
+  sep = ",", row.names = FALSE
+)
+
+
 
 # Get e-values for the HR estimates and lower 95% confidence
 # limits. Unfortunately, `EValue::evalues.HR` isn't vectorized, so we
