@@ -3,7 +3,7 @@
 # Plot results for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220515
+# 20220517
 
 
 # Setup --------------------------------------------------------------
@@ -11,6 +11,7 @@
 library(data.table)
 library(ggplot2)
 library(magrittr)
+library(paletteer)
 library(pdftools)
 
 
@@ -26,6 +27,10 @@ gray5c <- "#969696"
 gray5d <- "#636363"
 gray5e <- "#252525"
 
+color5 <- paletteer::paletteer_d("rcartocolor::SunsetDark", 5)
+color5 <- rev(paletteer::paletteer_d("rcartocolor::ag_GrnYl", 5))
+color5 <- rev(paletteer::paletteer_c("viridis::viridis", 5))
+
 
 # Plotting  ----------------------------------------------------------
 
@@ -33,30 +38,6 @@ load("../data/oo-results.Rdata")
 
 
 # O/O, SN effect ------------------
-
-# Colored by weight, facetted by breed size, separated by sex
-
-## cairo_pdf(
-##   "../output/fig/fig-oo-sn-effect-female-all-weights.pdf",
-##   width = 7, height = 7
-## )
-## ds[sex == "Female"] %>%
-##   ggplot(
-##     aes(x = age, y = hr, ymin = lo, ymax = hi, colour = wt_pctl_char)
-##   ) +
-##   geom_pointrange() +
-##   geom_line() +
-##   scale_colour_discrete("Weight Quartile") +
-##   labs(title = "Female Dogs") +
-##   xlab("\nAge at Index") +
-##   ylab("Hazard Ratio of Spayed/Neutered vs. Intact\n") +
-##   facet_wrap(vars(size)) +
-##   theme_gray(base_size = 12) +
-##   theme(
-##     legend.position = "bottom"
-##   )
-## dev.off()
-
 
 ds <- data.table::copy(sn_results)
 ds[,
@@ -118,7 +99,7 @@ dev.off()
 pdftools::pdf_combine(
   c("../output/fig/fig-oo-sn-effect-female-all-weights-bw.pdf",
     "../output/fig/fig-oo-sn-effect-male-all-weights-bw.pdf"),
-  "../output/fig/fig-oo-sn-effect-all-weights.pdf"
+  "../output/fig/fig-oo-sn-effect-all-weights-bw.pdf"
 )
 file.remove(
   c("../output/fig/fig-oo-sn-effect-female-all-weights-bw.pdf",
@@ -256,6 +237,70 @@ pdftools::pdf_combine(
 file.remove(
   c("../output/fig/fig-oo-age-effect-among-SN-all-years-female-bw.pdf",
     "../output/fig/fig-oo-age-effect-among-SN-all-years-male-bw.pdf")
+)
+
+cairo_pdf(
+  "../output/fig/fig-oo-age-effect-among-SN-all-years-female-col.pdf",
+  width = 13, height = 8.5
+)
+ds[sex == "Female"] %>%
+  ggplot(
+    aes(
+      x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size
+    )
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  labs(title = "Female Dogs") +
+  xlab("\nAge at Spay/Neuter (Years)") +
+  ylab("Hazard Ratio for Age\n") +
+  scale_y_log10() +
+  scale_colour_manual(
+    "Breed Size",
+    values = color5
+  ) +
+  facet_wrap(vars(reference_age), nrow = 2) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  "../output/fig/fig-oo-age-effect-among-SN-all-years-male-col.pdf",
+  width = 13, height = 8.5
+)
+ds[sex == "Male"] %>%
+  ggplot(
+    aes(
+      x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size
+    )
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  labs(title = "Male Dogs") +
+  xlab("\nAge at Spay/Neuter (Years)") +
+  ylab("Hazard Ratio for Age\n") +
+  scale_y_log10() +
+  scale_colour_manual(
+    "Breed Size",
+    values = color5
+  ) +
+  facet_wrap(vars(reference_age), nrow = 2) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+pdftools::pdf_combine(
+  c("../output/fig/fig-oo-age-effect-among-SN-all-years-female-col.pdf",
+    "../output/fig/fig-oo-age-effect-among-SN-all-years-male-col.pdf"),
+  "../output/fig/fig-oo-age-effect-among-SN-all-years-col.pdf"
+)
+file.remove(
+  c("../output/fig/fig-oo-age-effect-among-SN-all-years-female-col.pdf",
+    "../output/fig/fig-oo-age-effect-among-SN-all-years-male-col.pdf")
 )
 
 

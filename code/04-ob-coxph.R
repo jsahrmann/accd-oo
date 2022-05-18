@@ -4,7 +4,7 @@
 # analysis of obesity for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220516
+# 20220517
 
 
 # Setup --------------------------------------------------------------
@@ -76,4 +76,54 @@ age_among_sn_results <- cbind(
 save(
   sn_results, age_among_sn_results,
   file = "../data/ob-results.Rdata"
+)
+
+
+# Exports ------------------------------------------------------------
+
+save(
+  sn_results, age_among_sn_results,
+  file = "../data/ob-results.Rdata"
+)
+
+
+# SN effect -----------------------
+
+# Smallest difference in risk by SN
+sn_results[wt_pctl == 50][which.min(hr)]
+# Largest difference in risk by SN
+sn_results[wt_pctl == 50][which.max(hr)]
+
+round(sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
+round(sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
+
+# E-values
+sn_results[lo > 1][which.min(e_val)]
+sn_results[lo > 1][which.max(e_val)]
+
+write.table(
+  sn_results, file = "../output/table-ob-sn-effect-all-weights.csv",
+  sep = ",", row.names = FALSE
+)
+
+
+# Age effect among SN -------------
+
+# Smallest difference in risk by SN
+age_among_sn_results[reference_age == 1.0][which.min(hr)]
+
+# Largest difference in risk by SN
+age_among_sn_results[wt_pctl == 50][which.max(hr)]
+
+round(age_among_sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
+round(age_among_sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
+
+# E-values
+age_among_sn_results[lo > 1][which.min(e_val)]
+age_among_sn_results[lo > 1][which.max(e_val)]
+
+write.table(
+  age_among_sn_results,
+  file = "../output/table-ob-age-effect-among-SN-all-years.csv",
+  sep = ",", row.names = FALSE
 )
