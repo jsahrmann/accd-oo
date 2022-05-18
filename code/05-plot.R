@@ -3,7 +3,7 @@
 # Plot results for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220517
+# 20220518
 
 
 # Setup --------------------------------------------------------------
@@ -27,8 +27,7 @@ gray5c <- "#969696"
 gray5d <- "#636363"
 gray5e <- "#252525"
 
-color5 <- paletteer::paletteer_d("rcartocolor::SunsetDark", 5)
-color5 <- rev(paletteer::paletteer_d("rcartocolor::ag_GrnYl", 5))
+color3 <- rev(paletteer::paletteer_c("viridis::viridis", 3))
 color5 <- rev(paletteer::paletteer_c("viridis::viridis", 5))
 
 
@@ -64,8 +63,8 @@ ds[sex == "Female"] %>%
   scale_y_log10() +
   scale_fill_manual("Weight Quartile", values = c(gray3a, gray3b, gray3c)) +
   labs(title = "Female Dogs") +
-  xlab("\nAge at Index") +
-  ylab("Hazard Ratio of Spayed/Neutered vs. Intact\n") +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
   facet_wrap(vars(size)) +
   theme_bw(base_size = 12) +
   theme(
@@ -87,7 +86,7 @@ ds[sex == "Male"] %>%
   scale_fill_manual("Weight Quartile", values = c(gray3a, gray3b, gray3c)) +
   labs(title = "Male Dogs") +
   xlab("\nAge at Index (Years)") +
-  ylab("Hazard Ratio of Spayed/Neutered vs. Intact\n") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
   facet_wrap(vars(size)) +
   theme_bw(base_size = 12) +
   theme(
@@ -104,6 +103,63 @@ pdftools::pdf_combine(
 file.remove(
   c("../output/fig/fig-oo-sn-effect-female-all-weights-bw.pdf",
     "../output/fig/fig-oo-sn-effect-male-all-weights-bw.pdf")
+)
+
+
+cairo_pdf(
+  "../output/fig/fig-oo-sn-effect-female-all-weights-col.pdf",
+  width = 7, height = 7
+)
+ds[sex == "Female"] %>%
+  ggplot(
+    aes(x = age, y = hr, ymin = lo, ymax = hi, colour = wt_pctl_char)
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  scale_y_log10() +
+  scale_colour_manual("Weight Quartile", values = color3) +
+  labs(title = "Female Dogs") +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
+  facet_wrap(vars(size)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  "../output/fig/fig-oo-sn-effect-male-all-weights-col.pdf",
+  width = 7, height = 7
+)
+ds[sex == "Male"] %>%
+  ggplot(
+    aes(x = age, y = hr, ymin = lo, ymax = hi, colour = wt_pctl_char)
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  scale_y_log10() +
+  scale_colour_manual("Weight Quartile", values = color3) +
+  labs(title = "Male Dogs") +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
+  facet_wrap(vars(size)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+
+pdftools::pdf_combine(
+  c("../output/fig/fig-oo-sn-effect-female-all-weights-col.pdf",
+    "../output/fig/fig-oo-sn-effect-male-all-weights-col.pdf"),
+  ## "../output/fig/fig-oo-sn-effect-all-weights-col.pdf"
+  "../output/fig/sFigure 1 oo-sn-effect-all-weights-col.pdf"
+)
+file.remove(
+  c("../output/fig/fig-oo-sn-effect-female-all-weights-col.pdf",
+    "../output/fig/fig-oo-sn-effect-male-all-weights-col.pdf")
 )
 
 
@@ -136,10 +192,33 @@ ds[wt_pctl == 50] %>%
   scale_y_log10() +
   labs(title = "Dogs at Median Weight") +
   xlab("\nAge at Index (Years)") +
-  ylab("Hazard Ratio of Spayed/Neutered vs. Intact\n") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
   scale_fill_manual(
     "Breed Size", values = c(gray5a, gray5b, gray5c, gray5d, gray5e)
   ) +
+  facet_wrap(vars(sex)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  ## "../output/fig/fig-oo-sn-effect-median-weight-col.pdf",
+  "../output/fig/Figure 2 oo-sn-effect-median-weight-col.pdf",
+  width = 8, height = 6
+)
+ds[wt_pctl == 50] %>%
+  ggplot(
+    aes(x = age, y = hr, ymin = lo, ymax = hi, colour = size)
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  scale_y_log10() +
+  labs(title = "Dogs at Median Weight") +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
+  scale_colour_manual("Breed Size", values = color5) +
   facet_wrap(vars(sex)) +
   theme_bw(base_size = 12) +
   theme(
@@ -165,7 +244,7 @@ ds[,
       levels = unique(reference_age),
       labels = paste(
         rep(
-          "Spayed/Neutered at",
+          "Gonadectomized at",
           times = length(unique(reference_age))),
         unique(reference_age),
         c("Years", "Year",
@@ -188,7 +267,7 @@ ds[sex == "Female"] %>%
   geom_pointrange(shape = 21, colour = "black") +
   geom_line() +
   labs(title = "Female Dogs") +
-  xlab("\nAge at Spay/Neuter (Years)") +
+  xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_y_log10() +
   scale_fill_manual(
@@ -215,7 +294,7 @@ ds[sex == "Male"] %>%
   geom_pointrange(shape = 21, colour = "black") +
   geom_line() +
   labs(title = "Male Dogs") +
-  xlab("\nAge at Spay/Neuter (Years)") +
+  xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_y_log10() +
   scale_fill_manual(
@@ -252,7 +331,7 @@ ds[sex == "Female"] %>%
   geom_pointrange() +
   geom_line() +
   labs(title = "Female Dogs") +
-  xlab("\nAge at Spay/Neuter (Years)") +
+  xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_y_log10() +
   scale_colour_manual(
@@ -279,7 +358,7 @@ ds[sex == "Male"] %>%
   geom_pointrange() +
   geom_line() +
   labs(title = "Male Dogs") +
-  xlab("\nAge at Spay/Neuter (Years)") +
+  xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_y_log10() +
   scale_colour_manual(
@@ -296,7 +375,8 @@ dev.off()
 pdftools::pdf_combine(
   c("../output/fig/fig-oo-age-effect-among-SN-all-years-female-col.pdf",
     "../output/fig/fig-oo-age-effect-among-SN-all-years-male-col.pdf"),
-  "../output/fig/fig-oo-age-effect-among-SN-all-years-col.pdf"
+  ## "../output/fig/fig-oo-age-effect-among-SN-all-years-col.pdf"
+  "../output/fig/sFigure 2 oo-age-effect-among-SN-all-years-col.pdf"
 )
 file.remove(
   c("../output/fig/fig-oo-age-effect-among-SN-all-years-female-col.pdf",
@@ -308,7 +388,7 @@ cairo_pdf(
   "../output/fig/fig-oo-age-effect-among-SN-1-year-bw.pdf",
   width = 7.5, height = 6.5
 )
-ds[reference_age == "Spayed/Neutered at 1 Year"] %>%
+ds[reference_age == "Gonadectomized at 1 Year"] %>%
   ggplot(
     aes(x = comparator_age, y = hr, ymin = lo, ymax = hi, fill = size)
   ) +
@@ -316,11 +396,35 @@ ds[reference_age == "Spayed/Neutered at 1 Year"] %>%
   geom_line() +
   scale_y_log10() +
   labs(title = "Compared to Dogs Gonadectomized at 1 Year") +
-  xlab("\nAge at Spay/Neuter (Years)") +
+  xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_fill_manual(
     "Breed Size", values = c(gray5a, gray5b, gray5c, gray5d, gray5e)
   ) +
+  facet_wrap(vars(sex)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  ## "../output/fig/fig-oo-age-effect-among-SN-1-year-col.pdf",
+  "../output/fig/Figure 3 oo-age-effect-among-SN-1-year-col.pdf",
+  width = 7.5, height = 6.5
+)
+ds[reference_age == "Gonadectomized at 1 Year"] %>%
+  ggplot(
+    aes(
+      x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size)
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  scale_y_log10() +
+  labs(title = "Compared to Dogs Gonadectomized at 1 Year") +
+  xlab("\nAge at Gonadectomy (Years)") +
+  ylab("Hazard Ratio for Age\n") +
+  scale_colour_manual("Breed Size", values = color5) +
   facet_wrap(vars(sex)) +
   theme_bw(base_size = 12) +
   theme(
@@ -360,8 +464,8 @@ ds[sex == "Female"] %>%
   scale_y_log10() +
   scale_fill_manual("Weight Quartile", values = c(gray3a, gray3b, gray3c)) +
   labs(title = "Female Dogs") +
-  xlab("\nAge at Index") +
-  ylab("Hazard Ratio of Spayed/Neutered vs. Intact\n") +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
   facet_wrap(vars(size)) +
   theme_bw(base_size = 12) +
   theme(
@@ -383,7 +487,7 @@ ds[sex == "Male"] %>%
   scale_fill_manual("Weight Quartile", values = c(gray3a, gray3b, gray3c)) +
   labs(title = "Male Dogs") +
   xlab("\nAge at Index (Years)") +
-  ylab("Hazard Ratio of Spayed/Neutered vs. Intact\n") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
   facet_wrap(vars(size)) +
   theme_bw(base_size = 12) +
   theme(
@@ -400,6 +504,63 @@ pdftools::pdf_combine(
 file.remove(
   c("../output/fig/fig-ob-sn-effect-female-all-weights-bw.pdf",
     "../output/fig/fig-ob-sn-effect-male-all-weights-bw.pdf")
+)
+
+
+cairo_pdf(
+  "../output/fig/fig-ob-sn-effect-female-all-weights-col.pdf",
+  width = 7, height = 7
+)
+ds[sex == "Female"] %>%
+  ggplot(
+    aes(x = age, y = hr, ymin = lo, ymax = hi, colour = wt_pctl_char)
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  scale_y_log10() +
+  scale_colour_manual("Weight Quartile", values = color3) +
+  labs(title = "Female Dogs") +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
+  facet_wrap(vars(size)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  "../output/fig/fig-ob-sn-effect-male-all-weights-col.pdf",
+  width = 7, height = 7
+)
+ds[sex == "Male"] %>%
+  ggplot(
+    aes(x = age, y = hr, ymin = lo, ymax = hi, colour = wt_pctl_char)
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  scale_y_log10() +
+  scale_colour_manual("Weight Quartile", values = color3) +
+  labs(title = "Male Dogs") +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
+  facet_wrap(vars(size)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+
+pdftools::pdf_combine(
+  c("../output/fig/fig-ob-sn-effect-female-all-weights-col.pdf",
+    "../output/fig/fig-ob-sn-effect-male-all-weights-col.pdf"),
+  ## "../output/fig/fig-ob-sn-effect-all-weights-col.pdf"
+  "../output/fig/sFigure 4 ob-sn-effect-all-weights-col.pdf"
+)
+file.remove(
+  c("../output/fig/fig-ob-sn-effect-female-all-weights-col.pdf",
+    "../output/fig/fig-ob-sn-effect-male-all-weights-col.pdf")
 )
 
 
@@ -432,10 +593,33 @@ ds[wt_pctl == 50] %>%
   scale_y_log10() +
   labs(title = "Dogs at Median Weight") +
   xlab("\nAge at Index (Years)") +
-  ylab("Hazard Ratio of Spayed/Neutered vs. Intact\n") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
   scale_fill_manual(
     "Breed Size", values = c(gray5a, gray5b, gray5c, gray5d, gray5e)
   ) +
+  facet_wrap(vars(sex)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  ## "../output/fig/fig-ob-sn-effect-median-weight-col.pdf",
+  "../output/fig/sFigure 3 ob-sn-effect-median-weight-col.pdf",
+  width = 8, height = 6
+)
+ds[wt_pctl == 50] %>%
+  ggplot(
+    aes(x = age, y = hr, ymin = lo, ymax = hi, colour = size)
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  scale_y_log10() +
+  labs(title = "Dogs at Median Weight") +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
+  scale_colour_manual("Breed Size", values = color5) +
   facet_wrap(vars(sex)) +
   theme_bw(base_size = 12) +
   theme(
@@ -461,7 +645,7 @@ ds[,
       levels = unique(reference_age),
       labels = paste(
         rep(
-          "Spayed/Neutered at",
+          "Gonadectomized at",
           times = length(unique(reference_age))),
         unique(reference_age),
         c("Years", "Year",
@@ -484,7 +668,7 @@ ds[sex == "Female"] %>%
   geom_pointrange(shape = 21, colour = "black") +
   geom_line() +
   labs(title = "Female Dogs") +
-  xlab("\nAge at Spay/Neuter (Years)") +
+  xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_y_log10() +
   scale_fill_manual(
@@ -511,7 +695,7 @@ ds[sex == "Male"] %>%
   geom_pointrange(shape = 21, colour = "black") +
   geom_line() +
   labs(title = "Male Dogs") +
-  xlab("\nAge at Spay/Neuter (Years)") +
+  xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_y_log10() +
   scale_fill_manual(
@@ -535,12 +719,71 @@ file.remove(
     "../output/fig/fig-ob-age-effect-among-SN-all-years-male-bw.pdf")
 )
 
+cairo_pdf(
+  "../output/fig/fig-ob-age-effect-among-SN-all-years-female-col.pdf",
+  width = 13, height = 8.5
+)
+ds[sex == "Female"] %>%
+  ggplot(
+    aes(
+      x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size
+    )
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  labs(title = "Female Dogs") +
+  xlab("\nAge at Gonadectomy (Years)") +
+  ylab("Hazard Ratio for Age\n") +
+  scale_y_log10() +
+  scale_colour_manual("Breed Size", values = color5) +
+  facet_wrap(vars(reference_age), nrow = 2) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  "../output/fig/fig-ob-age-effect-among-SN-all-years-male-col.pdf",
+  width = 13, height = 8.5
+)
+ds[sex == "Male"] %>%
+  ggplot(
+    aes(
+      x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size
+    )
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  labs(title = "Male Dogs") +
+  xlab("\nAge at Gonadectomy (Years)") +
+  ylab("Hazard Ratio for Age\n") +
+  scale_y_log10() +
+  scale_colour_manual("Breed Size", values = color5) +
+  facet_wrap(vars(reference_age), nrow = 2) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+pdftools::pdf_combine(
+  c("../output/fig/fig-ob-age-effect-among-SN-all-years-female-col.pdf",
+    "../output/fig/fig-ob-age-effect-among-SN-all-years-male-col.pdf"),
+  ## "../output/fig/fig-ob-age-effect-among-SN-all-years-col.pdf"
+  "../output/fig/sFigure 6 ob-age-effect-among-SN-all-years-col.pdf"
+)
+file.remove(
+  c("../output/fig/fig-ob-age-effect-among-SN-all-years-female-col.pdf",
+    "../output/fig/fig-ob-age-effect-among-SN-all-years-male-col.pdf")
+)
+
 
 cairo_pdf(
   "../output/fig/fig-ob-age-effect-among-SN-1-year-bw.pdf",
   width = 7.5, height = 6.5
 )
-ds[reference_age == "Spayed/Neutered at 1 Year"] %>%
+ds[reference_age == "Gonadectomized at 1 Year"] %>%
   ggplot(
     aes(x = comparator_age, y = hr, ymin = lo, ymax = hi, fill = size)
   ) +
@@ -548,11 +791,35 @@ ds[reference_age == "Spayed/Neutered at 1 Year"] %>%
   geom_line() +
   scale_y_log10() +
   labs(title = "Compared to Dogs Gonadectomized at 1 Year") +
-  xlab("\nAge at Spay/Neuter (Years)") +
+  xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_fill_manual(
     "Breed Size", values = c(gray5a, gray5b, gray5c, gray5d, gray5e)
   ) +
+  facet_wrap(vars(sex)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  ## "../output/fig/fig-ob-age-effect-among-SN-1-year-col.pdf",
+  "../output/fig/sFigure 5 ob-age-effect-among-SN-1-year-col.pdf",
+  width = 7.5, height = 6.5
+)
+ds[reference_age == "Gonadectomized at 1 Year"] %>%
+  ggplot(
+    aes(
+      x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size)
+  ) +
+  geom_pointrange() +
+  geom_line() +
+  scale_y_log10() +
+  labs(title = "Compared to Dogs Gonadectomized at 1 Year") +
+  xlab("\nAge at Gonadectomy (Years)") +
+  ylab("Hazard Ratio for Age\n") +
+  scale_colour_manual("Breed Size", values = color5) +
   facet_wrap(vars(sex)) +
   theme_bw(base_size = 12) +
   theme(

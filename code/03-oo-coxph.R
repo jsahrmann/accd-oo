@@ -4,7 +4,7 @@
 # for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220517
+# 20220518
 
 
 # Setup --------------------------------------------------------------
@@ -19,7 +19,7 @@ library(survival)
 
 # Input data ---------------------------------------------------------
 
-source("./0w-const-fn.R")
+source("./00-const-fn.R")
 source("./02-read-cohort.R")
 
 
@@ -45,6 +45,10 @@ model1 <- cph(
 
 anova(model1)
 summary(model1)
+
+# Get hazard ratio for one-unit increase in average number of visits
+# per year.
+summary(model1, visitsPerYear = 1:2)
 
 
 # SN effect -----------------------

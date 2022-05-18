@@ -4,7 +4,7 @@
 # analysis of obesity for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220517
+# 20220518
 
 
 # Setup --------------------------------------------------------------
@@ -19,7 +19,7 @@ library(survival)
 
 # Input data ---------------------------------------------------------
 
-source("./0w-const-fn.R")
+source("./00-const-fn.R")
 source("./02-read-cohort.R")
 
 
@@ -96,6 +96,16 @@ sn_results[wt_pctl == 50][which.max(hr)]
 
 round(sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
 round(sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
+
+# Age with largest hazard ratio within each breed size class.
+sn_results[, max_hr := max(.SD), by = "size", .SDcols = "hr"]
+max_hrs <- sn_results[hr == max_hr]
+max_hrs
+# Age with largest hazard ratio within each breed size class and sex.
+sn_results[,
+  max_hr := max(.SD), by = c("size", "sex"), .SDcols = "hr"]
+max_hrs <- sn_results[hr == max_hr]
+max_hrs
 
 # E-values
 sn_results[lo > 1][which.min(e_val)]
