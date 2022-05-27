@@ -4,7 +4,7 @@
 # sterilization on risk of overweight/obese status.
 #
 # John Sahrmann
-# 20220410
+# 20220527
 #
 # ;anti-join;data.table;data.table::.SD;data.table::fread
 # ;data.table::rbindlist;data.table::setnames;data.table-anti-join
@@ -16,12 +16,9 @@
 
 library(data.table)
 library(dplyr)
-library(GGally)
-library(ggplot2)
 library(lubridate)
 library(magrittr)
-library(patchwork)
-library(survival)
+library(readxl)
 
 
 # Constants ----------------------------------------------------------
@@ -40,11 +37,11 @@ new_col_names <- c(
 
 # Read the full Banfield data set.
 system.time(
-visits_all <- fread(
+visits_all <- data.table::fread(
   cmd = paste0("unzip -p \"", data_dir, "R2020_ACCD_DATA.zip\""),
   na.strings = "null")
 )  # 6--21 s
-setnames(visits_all, new_col_names)
+data.table::setnames(visits_all, new_col_names)
 
 # Recast columns with dates.
 date_cols <- grep("date", colnames(visits_all), value = TRUE)
@@ -55,14 +52,14 @@ breedSizes <- readxl::read_excel(
   "../data/Banfield data breeds - final recommendations.xlsx",
   range = "A1:I506"
 ) %>%
-  select(
+  dplyr::select(
     `Banfield breed label`, `Recommended size category (DAP buckets)`
   ) %>%
-  rename(
+  dplyr::rename(
     breed = `Banfield breed label`,
     size = `Recommended size category (DAP buckets)`
   ) %>%
-  as.data.table()
+  data.table::as.data.table()
 
 
 # Data management ----------------------------------------------------
@@ -73,16 +70,16 @@ breedSizes <- readxl::read_excel(
 # 2013. (Dogs who were overweight/obese in 2013 have already been
 # excluded by Banfield.)
 visits_2014ButNotIfSNIn2013 <- visits_all[
-  year(visit_date) == 2014
-  & (is.na(neuter_date) | year(neuter_date) > 2013)
+  lubridate::year(visit_date) == 2014
+  & (is.na(neuter_date) | lubridate::year(neuter_date) > 2013)
 ][,
   `:=`(
-    sn = fifelse(
-      !is.na(neuter_date) & year(neuter_date) == 2014, 1, 0),
-    index_date = fifelse(
-      !is.na(neuter_date) & year(neuter_date) == 2014,
-      neuter_date,
-      min(visit_date))
+    sn = data.table::fifelse(
+      !is.na(neuter_date) & lubridate::year(neuter_date) == 2014,
+      1, 0),
+    index_date = data.table::fifelse(
+      !is.na(neuter_date) & lubridate::year(neuter_date) == 2014,
+      neuter_date, min(visit_date))
   ),
   by = id
 ]
@@ -121,19 +118,18 @@ visits_a14_atIndexOrBefore[,
 ][,
   dt2013VisitAndIndex := as.integer(index_date - first_visit_date + 1)
 ][,
-  nVisits := n_distinct(visit_date), by = id
+  nVisits := dplyr::n_distinct(visit_date), by = id
 ][,
   visitsPerYear := nVisits / dt2013VisitAndIndex * 365.25
 ]
 
-
 # Filter to visits with a BCS of 4 or 5.
-visits_a14OO_atIndexOrBefore <-
-  visits_a14_atIndexOrBefore[bcs %in% 4:5]
+visits_a14OO_atIndexOrBefore <- visits_a14_atIndexOrBefore[
+  bcs %in% 4:5]
 
 # Collapse to one record per dog.
-dogs_a14ExclOO_atIndexOrBefore <-
-  unique(visits_a14OO_atIndexOrBefore[, .(id, sn, index_date)])
+dogs_a14ExclOO_atIndexOrBefore <- unique(
+  visits_a14OO_atIndexOrBefore[, .(id, sn, index_date)])
 
 # For each dog, check for a history of conditions that could be
 # related to weight.
@@ -161,8 +157,8 @@ dogs_a14ExclDx_atIndexOrBefore <- dogs_a14_atIndexOrBefore[
 visits_a14_atIndex <- visits_a14_all[visit_date == index_date]
 
 # Count the number of visit records on the index date for each dog.
-dogs_a14VisitCounts_atIndex <-
-  visits_a14_atIndex[, .(visits = .N), by = id]
+dogs_a14VisitCounts_atIndex <- visits_a14_atIndex[,
+  .(visits = .N), by = id]
 
 # To simplify, we'll take the last record per dog. (Some hacking
 # suggests that the difference between taking the first or last is
@@ -173,22 +169,23 @@ dogs_a14_atIndex <- visits_a14_atIndex[, lapply(.SD, last), by = id]
 # dogs all have a neuter date (which is defined in the data dictionary
 # as the spay/neuter date *at Banfield*) but no corresponding visit
 # record.
-dogs_a14ExclSNButNoVisit_atIndex <-
-  dogs_a14[!dogs_a14_atIndex, on = "id"]
+dogs_a14ExclSNButNoVisit_atIndex <- dogs_a14[
+  !dogs_a14_atIndex, on = "id"]
 
 # Select dogs with missing BCS or BCS of 1 or with an abnormal weight.
-dogs_a14ExclBCSMissing_atIndex <-
-  dogs_a14_atIndex[is.na(bcs), .(id, sn)]
-dogs_a14ExclBCS1_atIndex <-
-  dogs_a14_atIndex[bcs == 1, .(id, sn)]
-dogs_a14ExclWt_atIndex <- dogs_a14_atIndex[weight >= 250, .(id, sn)]
+dogs_a14ExclBCSMissing_atIndex <- dogs_a14_atIndex[
+  is.na(bcs), .(id, sn)]
+dogs_a14ExclBCS1_atIndex <- dogs_a14_atIndex[
+  bcs == 1, .(id, sn)]
+dogs_a14ExclWt_atIndex <- dogs_a14_atIndex[
+  weight >= 250, .(id, sn)]
 
 # Select dogs with missing neuter date but `intact == 0`, indicating
 # spayed/neutered at the start of the index visit. (Perhaps these dogs
 # were sterilized elsewhere? Curiously, `sex` does not suggest
 # spayed/neutered.)
-dogs_a14ExclNoNeuterDateButNotIntact_atIndex <-
-  dogs_a14_atIndex[is.na(neuter_date) & intact == 0, .(id, sn)]
+dogs_a14ExclNoNeuterDateButNotIntact_atIndex <- dogs_a14_atIndex[
+  is.na(neuter_date) & intact == 0, .(id, sn)]
 
 # Select dogs whose breed could not be categorized by size (or that
 # are otherwise unusual).
@@ -196,58 +193,81 @@ dogs_a14ExclBreed_atIndex <- dogs_a14_atIndex[is.na(size), .(id, sn)]
 
 # Select spayed/neutered dogs who were sterilized dogs at less than 90
 # days of age.
-dogs_a14ExclEarlySN_atIndex <-
-  dogs_a14_atIndex[,
-    age := as.integer(index_date - birth_date)
-  ][
-    sn == 1 & age < 90, .(id, sn)
-  ]
+dogs_a14ExclEarlySN_atIndex <- dogs_a14_atIndex[,
+  age := as.integer(index_date - birth_date)
+][
+  sn == 1 & age < 90, .(id, sn)
+]
 
 
 # After index ---------------------
 
 # Select dogs with no visits after index for 'exclusion', as they won't
 # contribute any information to the survival analysis.
-dogs_a14WithFoo <-
-  unique(visits_a14_all[visit_date > index_date, .(id, sn)])
+dogs_a14WithFoo <- unique(
+  visits_a14_all[visit_date > index_date, .(id, sn)])
 dogs_a14WithoutFoo <- dogs_a14[!dogs_a14WithFoo, .(id, sn), on = "id"]
 
 
 # Final index data set -----------------------------------------------
 
-# Apply exclusions.
-dogs_i1 <-
-  dogs_a14[!dogs_a14ExclSNButNoVisit_atIndex, .(id, sn), on = "id"]
+# Apply exclusions in the order recommended by Jan in her 20220522
+# revision of the Results.
+#
+# "Keep: No follow-up visits"
+dogs_i1 <- dogs_a14[!dogs_a14WithoutFoo, .(id, sn), on = "id"]
 dogs_x1 <- dogs_a14[!dogs_i1, .(id, sn), on = "id"]
-dogs_i2 <-
-  dogs_i1[!dogs_a14ExclEarlySN_atIndex, .(id, sn), on = "id"]
+# "Keep: No visit record on S/N date"
+dogs_i2 <- dogs_i1[
+  !dogs_a14ExclSNButNoVisit_atIndex, .(id, sn), on = "id"]
 dogs_x2 <- dogs_i1[!dogs_i2, .(id, sn), on = "id"]
-dogs_i3 <-
-  dogs_i2[!dogs_a14ExclNoNeuterDateButNotIntact_atIndex, on = "id"]
+# "Combine: S/N before 90 days with neutered elsewhere"
+dogs_i3 <- dogs_i2[
+  !dogs_a14ExclEarlySN_atIndex, .(id, sn), on = "id"
+][
+  !dogs_a14ExclNoNeuterDateButNotIntact_atIndex, .(id, sn), on = "id"
+]
 dogs_x3 <- dogs_i2[!dogs_i3, .(id, sn), on = "id"]
-dogs_i4 <-
-  dogs_i3[!dogs_a14ExclOO_atIndexOrBefore, .(id, sn), on = "id"]
+# "Keep: BCS missing at index date"
+dogs_i4 <- dogs_i3[
+  !dogs_a14ExclBCSMissing_atIndex, .(id, sn), on = "id"]
 dogs_x4 <- dogs_i3[!dogs_i4, .(id, sn), on = "id"]
-dogs_i5 <-
-  dogs_i4[!dogs_a14ExclDx_atIndexOrBefore, .(id, sn), on = "id"]
+# "Combine: BCS < 3 or >3 at or before index date or weight 250
+# lbs. or more"
+dogs_i5 <- dogs_i4[
+  !dogs_a14ExclBCS1_atIndex, .(id, sn), on = "id"
+][
+  !dogs_a14ExclOO_atIndexOrBefore, .(id, sn), on = "id"
+][
+  !dogs_a14ExclWt_atIndex, .(id, sn), on = "id"
+]
 dogs_x5 <- dogs_i4[!dogs_i5, .(id, sn), on = "id"]
-dogs_i6 <-
-  dogs_i5[!dogs_a14ExclBCSMissing_atIndex, .(id, sn), on = "id"]
+# "Keep: Hyperthyroid or hypothyroid at or before index date"
+dogs_i6 <- dogs_i5[
+  !dogs_a14ExclDx_atIndexOrBefore, .(id, sn), on = "id"]
 dogs_x6 <- dogs_i5[!dogs_i6, .(id, sn), on = "id"]
-dogs_i7 <-
-  dogs_i6[!dogs_a14ExclBCS1_atIndex, .(id, sn), on = "id"]
+# "Keep: Size category could not be assigned"
+dogs_i7 <- dogs_i6[!dogs_a14ExclBreed_atIndex, .(id, sn), on = "id"]
 dogs_x7 <- dogs_i6[!dogs_i7, .(id, sn), on = "id"]
-dogs_i8 <-
-  dogs_i7[!dogs_a14ExclWt_atIndex, .(id, sn), on = "id"]
-dogs_x8 <- dogs_i7[!dogs_i8, .(id, sn), on = "id"]
-dogs_i9 <-
-  dogs_i8[!dogs_a14ExclBreed_atIndex, .(id, sn), on = "id"]
-dogs_x9 <- dogs_i8[!dogs_i9, .(id, sn), on = "id"]
-dogs_i10 <-
-  dogs_i9[!dogs_a14WithoutFoo, .(id, sn), on = "id"]
-dogs_x10 <- dogs_i9[!dogs_i10, .(id, sn), on = "id"]
+
+x <- data.table::copy(dogs_a14)
+y <- data.table::copy(dogs_a14WithoutFoo)
+x[y[, exclWithoutFoo := 1], on = "id", exclWithoutFoo := i.exclWithoutFoo]
+
+x[y, on = "id", exclWithoutFoo := !is.na(i.id)]
+
 
 # Print the sample size changes for a flow chart table.
+purrr::map(
+  list(
+    dogs_a14, dogs_x1, dogs_i1, dogs_x2, dogs_i2, dogs_x3, dogs_i3,
+    dogs_x4, dogs_i4, dogs_x5, dogs_i5, dogs_x6, dogs_i6, dogs_x7,
+    dogs_i7
+  ),
+  ~ table(.x[["sn"]])
+)
+
+
 purrr::map(
   list(
     dogs_a14, dogs_x1, dogs_i1, dogs_x2, dogs_i2, dogs_x3, dogs_i3,
