@@ -23,64 +23,6 @@ source("./00-const-fn.R")
 source("./02-read-cohort.R")
 
 
-# 20220530 -----------------------------------------------------------
-
-# Answer questions from Kate's email 20220529 1812.
-
-# Crude outcome percentages
-
-# (Run code in 06-make-tables.R to make `table2`.)
-24405/109467
-17852/45732
-
-# Histogram of age at index
-
-col0 <- "lightcoral"
-col1 <- "royalblue"
-
-p1 <- dat %>%
-  ggplot(aes(x = ageYearsR, colour = sn, fill = sn)) +
-  geom_bar(aes(y = ..prop..), alpha = 0.25, position = "dodge") +
-  scale_y_continuous(labels = scales::percent_format()) +
-  scale_colour_manual("", values = c(col0, col1)) +
-  scale_fill_manual("", values = c(col0, col1)) +
-  xlab("Age at Spay/Neuter in 2014 or First Visit in 2014 (Years)") +
-  ylab("Percentage") +
-  theme_gray(base_size = 16) +
-  theme(legend.position = "bottom")
-png(
-  "../output/fig/Age at enrollment (percent).png",
-  width = 720, height = 480
-)
-p1
-dev.off()
-
-p2 <- dat %>%
-  ggplot(aes(x = ageYearsR, colour = sn, fill = sn)) +
-  geom_bar(alpha = 0.25, position = "dodge") +
-  scale_y_continuous(label = scales::comma) +
-  scale_colour_manual("", values = c(col0, col1)) +
-  scale_fill_manual("", values = c(col0, col1)) +
-  xlab("Age at Spay/Neuter in 2014 or First Visit in 2014 (Years)") +
-  ylab("Number of Dogs") +
-  theme_gray(base_size = 16) +
-  theme(legend.position = "bottom")
-png(
-  "../output/fig/Age at enrollment (count).png",
-  width = 720, height = 480
-)
-p2
-dev.off()
-
-# Censoring for S/N after 2014
-
-dat$oo_t2e == (dat$neuter_date_after2014 - dat$index_date)
-
-# Total censored after 2014
-x <- table(dat$neuter_date_after2014, useNA = "ifany")
-sum(x[-length(x)])
-
-
 # Modeling -----------------------------------------------------------
 
 # Set options for Hmisc/rms analysis functions.

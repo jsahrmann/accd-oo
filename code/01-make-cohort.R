@@ -250,29 +250,12 @@ dogs_x6 <- dogs_i5[!dogs_i6, .(id, sn), on = "id"]
 dogs_i7 <- dogs_i6[!dogs_a14ExclBreed_atIndex, .(id, sn), on = "id"]
 dogs_x7 <- dogs_i6[!dogs_i7, .(id, sn), on = "id"]
 
-x <- data.table::copy(dogs_a14)
-y <- data.table::copy(dogs_a14WithoutFoo)
-x[y[, exclWithoutFoo := 1], on = "id", exclWithoutFoo := i.exclWithoutFoo]
-
-x[y, on = "id", exclWithoutFoo := !is.na(i.id)]
-
-
 # Print the sample size changes for a flow chart table.
 purrr::map(
   list(
     dogs_a14, dogs_x1, dogs_i1, dogs_x2, dogs_i2, dogs_x3, dogs_i3,
     dogs_x4, dogs_i4, dogs_x5, dogs_i5, dogs_x6, dogs_i6, dogs_x7,
     dogs_i7
-  ),
-  ~ table(.x[["sn"]])
-)
-
-
-purrr::map(
-  list(
-    dogs_a14, dogs_x1, dogs_i1, dogs_x2, dogs_i2, dogs_x3, dogs_i3,
-    dogs_x4, dogs_i4, dogs_x5, dogs_i5, dogs_x6, dogs_i6, dogs_x7,
-    dogs_i7, dogs_x8, dogs_i8, dogs_x9, dogs_i9, dogs_x10, dogs_i10
   ),
   ~ table(.x[["sn"]])
 )
