@@ -203,10 +203,15 @@ ds[wt_pctl == 50] %>%
   )
 dev.off()
 
-cairo_pdf(
+## cairo_pdf(
+##   ## "../output/fig/fig-oo-sn-effect-median-weight-col.pdf",
+##   "../output/fig/Figure 2 oo-sn-effect-median-weight-col.pdf",
+##   width = 8, height = 6
+## )
+png(
   ## "../output/fig/fig-oo-sn-effect-median-weight-col.pdf",
-  "../output/fig/Figure 2 oo-sn-effect-median-weight-col.pdf",
-  width = 8, height = 6
+  "../output/fig/Figure 2 oo-sn-effect-median-weight-col.png",
+  width = 8, height = 6, units = "in", res = 196
 )
 ds[wt_pctl == 50] %>%
   ggplot(
@@ -345,9 +350,13 @@ ds[sex == "Female"] %>%
   )
 dev.off()
 
-cairo_pdf(
-  "../output/fig/fig-oo-age-effect-among-SN-all-years-male-col.pdf",
-  width = 13, height = 8.5
+## cairo_pdf(
+##   "../output/fig/fig-oo-age-effect-among-SN-all-years-male-col.pdf",
+##   width = 13, height = 8.5
+## )
+png(
+  "../output/fig/fig-oo-age-effect-among-SN-all-years-male-col.png",
+  width = 13, height = 8.5, units = "in", res = 196
 )
 ds[sex == "Male"] %>%
   ggplot(
@@ -408,10 +417,15 @@ ds[reference_age == "Gonadectomized at 1 Year"] %>%
   )
 dev.off()
 
-cairo_pdf(
+## cairo_pdf(
+##   ## "../output/fig/fig-oo-age-effect-among-SN-1-year-col.pdf",
+##   "../output/fig/Figure 3 oo-age-effect-among-SN-1-year-col.pdf",
+##   width = 7.5, height = 6.5
+## )
+png(
   ## "../output/fig/fig-oo-age-effect-among-SN-1-year-col.pdf",
-  "../output/fig/Figure 3 oo-age-effect-among-SN-1-year-col.pdf",
-  width = 7.5, height = 6.5
+  "../output/fig/Figure 3 oo-age-effect-among-SN-1-year-col.png",
+  width = 7.5, height = 5, units = "in", res = 196
 )
 ds[reference_age == "Gonadectomized at 1 Year"] %>%
   ggplot(
@@ -604,10 +618,15 @@ ds[wt_pctl == 50] %>%
   )
 dev.off()
 
-cairo_pdf(
+## cairo_pdf(
+##   ## "../output/fig/fig-ob-sn-effect-median-weight-col.pdf",
+##   "../output/fig/sFigure 3 ob-sn-effect-median-weight-col.pdf",
+##   width = 8, height = 6
+## )
+png(
   ## "../output/fig/fig-ob-sn-effect-median-weight-col.pdf",
-  "../output/fig/sFigure 3 ob-sn-effect-median-weight-col.pdf",
-  width = 8, height = 6
+  "../output/fig/sFigure 3 ob-sn-effect-median-weight-col.png",
+  width = 8, height = 6, units = "in", res = 196
 )
 ds[wt_pctl == 50] %>%
   ggplot(
