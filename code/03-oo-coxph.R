@@ -4,13 +4,12 @@
 # for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220518
+# 20220724
 
 
 # Setup --------------------------------------------------------------
 
 library(data.table)
-library(EValue)
 library(Hmisc)
 library(magrittr)
 library(rms)
@@ -57,9 +56,8 @@ sn_ref_pts <- as.data.table(
   define_sn_reference_points(ages = seq(0.5, 6, by = 0.5)))
 
 sn_est <- evaluate_sn_reference_points(sn_ref_pts, model1)
-sn_e_val <- compute_e_values(sn_est)
 
-sn_results <- cbind(sn_ref_pts, sn_est, sn_e_val)
+sn_results <- cbind(sn_ref_pts, sn_est)
 
 
 # Age effect among SN -------------
@@ -69,10 +67,8 @@ age_among_sn_ref_pts <- data.table::as.data.table(
 
 age_among_sn_est <- evaluate_age_among_sn_reference_points(
   age_among_sn_ref_pts, model1)
-age_among_sn_e_val <- compute_e_values(age_among_sn_est)
 
-age_among_sn_results <- cbind(
-  age_among_sn_ref_pts, age_among_sn_est, age_among_sn_e_val)
+age_among_sn_results <- cbind(age_among_sn_ref_pts, age_among_sn_est)
 
 
 # Exports ------------------------------------------------------------
@@ -93,15 +89,6 @@ sn_results[wt_pctl == 50][which.max(hr)]
 round(sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
 round(sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
 
-# E-values
-sn_results[lo > 1][which.min(e_val)]
-sn_results[lo > 1][which.max(e_val)]
-
-write.table(
-  sn_results, file = "../output/table-oo-sn-effect-all-weights.csv",
-  sep = ",", row.names = FALSE
-)
-
 
 # Age effect among SN -------------
 
@@ -113,13 +100,3 @@ age_among_sn_results[wt_pctl == 50][which.max(hr)]
 
 round(age_among_sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
 round(age_among_sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
-
-# E-values
-age_among_sn_results[lo > 1][which.min(e_val)]
-age_among_sn_results[lo > 1][which.max(e_val)]
-
-write.table(
-  age_among_sn_results,
-  file = "../output/table-oo-age-effect-among-SN-all-years.csv",
-  sep = ",", row.names = FALSE
-)

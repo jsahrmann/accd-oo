@@ -3,7 +3,7 @@
 # Define constants and helper functions.
 #
 # John Sahrmann
-# 20220515
+# 20220724
 
 
 # Setup --------------------------------------------------------------
@@ -189,20 +189,5 @@ evaluate_age_among_sn_reference_points <- function(
   }
 
   res <- apply(reference_points, 1, eval_at)
-  t(res)
-}
-
-
-compute_e_values <- function(estimates, rare = FALSE) {
-  e_val <- function(x) {
-    suppressMessages(
-      EValue::evalues.HR(
-        est = x[["hr"]], lo = x[["lo"]], hi = x[["hi"]], rare = rare
-      )["E-values", c("point", "lower"), drop = FALSE]
-    )
-  }
-
-  res <- apply(estimates, 1, e_val)
-  dimnames(res) <- list(c("e_val", "e_val_lo"), NULL)
   t(res)
 }
