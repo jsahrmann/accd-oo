@@ -4,7 +4,7 @@
 # sterilization on risk of overweight/obese status.
 #
 # John Sahrmann
-# 20220724
+# 20220725
 #
 # ;anti-join;data.table;data.table::.SD;data.table::fread
 # ;data.table::rbindlist;data.table::setnames;data.table-anti-join
@@ -16,6 +16,7 @@
 
 library(data.table)
 library(dplyr)
+library(ggconsort)
 library(lubridate)
 library(magrittr)
 library(readxl)
@@ -410,3 +411,242 @@ readr::write_rds(
   ),
   compress = "gz"
 )
+
+
+## Consort diagram ---------------------------------------------------
+
+# Apply exclusions in the order recommended by Jan in her 20220522
+# revision of the Results.
+dogs_a14[
+  # "Keep: No follow-up visits"
+  dogs_a14WithoutFoo, on = "id", exclWithoutFoo := !is.na(i.id)
+][
+  # "Keep: No visit record on S/N date"
+  dogs_a14ExclSNButNoVisit_atIndex, on = "id",
+  exclSNButNoVisit := !is.na(i.id)
+][
+  # "Combine: S/N before 90 days with neutered elsewhere"
+  dogs_a14ExclEarlySN_atIndex, on = "id", exclEarlySN := !is.na(i.id)
+][
+  dogs_a14ExclNoNeuterDateButNotIntact_atIndex, on = "id",
+  exclNoNeuterDateButNotIntact := !is.na(i.id)
+][
+  # "Keep: BCS missing at index date"
+  dogs_a14ExclBCSMissing_atIndex, on = "id",
+  exclBCSMissing := !is.na(i.id)
+][
+  # "Combine: BCS < 3 or >3 at or before index date or weight 250
+  # lbs. or more"
+  dogs_a14ExclBCS1_atIndex, on = "id", exclBCS1 := !is.na(i.id)
+][
+  dogs_a14ExclOO_atIndexOrBefore, on = "id", exclOO := !is.na(i.id)
+][
+  dogs_a14ExclWt_atIndex, on = "id", exclWt := !is.na(i.id)
+][
+  # "Keep: Hyperthyroid or hypothyroid at or before index date"
+  dogs_a14ExclDx_atIndexOrBefore, on = "id", exclDx := !is.na(i.id)
+][
+  # "Keep: Size category could not be assigned"
+  dogs_a14ExclBreed_atIndex, on = "id", exclBreed := !is.na(i.id)
+]
+
+t01 <- "Dogs examined in 2014 with a previous visit in 2013"
+t02 <- "Excluded: no visits after enrollment<br>"
+t03 <- "Dogs with available follow-up"
+t04 <- "Excluded: no visit record on neuter<br>date"
+t05 <- "Dogs with visit record on enrollment date"
+t06 <- paste0(
+  "Excluded: neutered before 90 days<br>of age or neutered at other ",
+  "facility<br>"
+)
+t07 <- "Dogs neutered at appropriate age and at Banfield location"
+t08 <- "Excluded: BCS missing at enrollment<br>"
+t09 <- "Dogs with nonmissing BCS at enrollment"
+t10 <- paste0(
+  "Excluded: BCS indicating overweight/<br>obese before or at enrollment",
+  ", or BCS<br>indicating underweight or recorded<br>weight of 250 lbs. or",
+  " more at<br>enrollment"
+)
+t11 <- paste0(
+  "Dogs with no history of overweight/obese and of normal weight at ",
+  "enrollment"
+)
+t12 <- paste0(
+  "Excluded: hyperthyroidism or<br>hypothyroidism diagnosis at or ",
+  "<br>before enrollment"
+)
+t13 <- "Dogs with no history of hyperthyroidism or hypothyroidism"
+t14 <- "Excluded: size category could not be<br>assigned"
+t15 <- "Final sample"
+
+cohorts <- dogs_a14 %>%
+  ggconsort::cohort_start(t01) %>%
+  ggconsort::cohort_define(
+    exclWithoutFoo = .full %>% dplyr::filter(exclWithoutFoo),
+    inWithFoo = .full %>% dplyr::filter(is.na(exclWithoutFoo)),
+    exclSNButNoVisit = inWithFoo %>% dplyr::filter(exclSNButNoVisit),
+    inSNVisit = inWithFoo %>% dplyr::filter(is.na(exclSNButNoVisit)),
+    exclEarlySN = inSNVisit %>%
+      dplyr::filter(exclEarlySN | exclNoNeuterDateButNotIntact),
+    inEarlySN = inSNVisit %>%
+      dplyr::filter(
+        is.na(exclEarlySN), is.na(exclNoNeuterDateButNotIntact)),
+    exclBCSMissing = inEarlySN %>% dplyr::filter(exclBCSMissing),
+    inBCSMissing = inEarlySN %>% dplyr::filter(is.na(exclBCSMissing)),
+    exclBCS1 = inBCSMissing %>%
+      dplyr::filter(exclBCS1 | exclOO | exclWt),
+    inBCS1 = inBCSMissing %>%
+      dplyr::filter(is.na(exclBCS1), is.na(exclOO), is.na(exclWt)),
+    exclDx = inBCS1 %>% dplyr::filter(exclDx),
+    inDx = inBCS1 %>% dplyr::filter(is.na(exclDx)),
+    exclBreed = inDx %>% dplyr::filter(exclBreed),
+    inBreed = inDx %>% dplyr::filter(is.na(exclBreed))
+  ) %>%
+  ggconsort::cohort_label(
+    exclWithoutFoo = t02,
+    inWithFoo = t03,
+    exclSNButNoVisit = t04,
+    inSNVisit = t05,
+    exclEarlySN = t06,
+    inEarlySN = t07,
+    exclBCSMissing = t08,
+    inBCSMissing = t09,
+    exclBCS1 = t10,
+    inBCS1 = t11,
+    exclDx = t12,
+    inDx = t13,
+    exclBreed = t14,
+    inBreed = t15
+  )
+
+consort <- cohorts %>%
+  ggconsort::consort_box_add(
+    "full", 0, 90, ggconsort::cohort_count_adorn(cohorts, .full)
+  ) %>%
+  ggconsort::consort_box_add(
+    "exclWithoutFoo", 30, 84,
+    ggconsort::cohort_count_adorn(cohorts, exclWithoutFoo)
+  ) %>%
+  ggconsort::consort_box_add(
+    "inWithFoo", 0, 80,
+    ggconsort::cohort_count_adorn(cohorts, inWithFoo)
+  ) %>%
+  ggconsort::consort_arrow_add(
+    start = "full", start_side = "bottom",
+    end = "inWithFoo", end_side = "top",
+    start_x = 0, start_y = 90
+  ) %>%
+  ggconsort::consort_arrow_add(
+    end = "exclWithoutFoo", end_side = "left",
+    start_x = 0, start_y = 84
+  ) %>%
+  ggconsort::consort_box_add(
+    "exclSNButNoVisit", 30, 74,
+    ggconsort::cohort_count_adorn(cohorts, exclSNButNoVisit)
+  ) %>%
+  ggconsort::consort_box_add(
+    "inSNVisit", 0, 70,
+    ggconsort::cohort_count_adorn(cohorts, inSNVisit)
+  ) %>%
+  ggconsort::consort_arrow_add(
+    start = "inWithFoo", start_side = "bottom",
+    end = "inSNVisit", end_side = "top",
+    start_x = 0, start_y = 80
+  ) %>%
+  ggconsort::consort_arrow_add(
+    end = "exclSNButNoVisit", end_side = "left",
+    start_x = 0, start_y = 74
+  ) %>%
+  ggconsort::consort_box_add(
+    "exclEarlySN", 30, 62,
+    ggconsort::cohort_count_adorn(cohorts, exclEarlySN)
+  ) %>%
+  ggconsort::consort_box_add(
+    "inEarlySN", 0, 57,
+    ggconsort::cohort_count_adorn(cohorts, inEarlySN)
+  ) %>%
+  ggconsort::consort_arrow_add(
+    start = "inSNVisit", start_side = "bottom",
+    end = "inEarlySN", end_side = "top",
+    start_x = 0, start_y = 70
+  ) %>%
+  ggconsort::consort_arrow_add(
+    end = "exclEarlySN", end_side = "left",
+    start_x = 0, start_y = 62
+  ) %>%
+  ggconsort::consort_box_add(
+    "exclBCSMissing", 30, 49,
+    ggconsort::cohort_count_adorn(cohorts, exclBCSMissing)
+  ) %>%
+  ggconsort::consort_box_add(
+    "inBCSMissing", 0, 45,
+    ggconsort::cohort_count_adorn(cohorts, inBCSMissing)
+  ) %>%
+  ggconsort::consort_arrow_add(
+    start = "inEarlySN", start_side = "bottom",
+    end = "inBCSMissing", end_side = "top",
+    start_x = 0, start_y = 62
+  ) %>%
+  ggconsort::consort_arrow_add(
+    end = "exclBCSMissing", end_side = "left",
+    start_x = 0, start_y = 49
+  ) %>%
+  ggconsort::consort_box_add(
+    "exclBCS1", 30, 35,
+    ggconsort::cohort_count_adorn(cohorts, exclBCS1)
+  ) %>%
+  ggconsort::consort_box_add(
+    "inBCS1", 0, 28,
+    ggconsort::cohort_count_adorn(cohorts, inBCS1)
+  ) %>%
+  ggconsort::consort_arrow_add(
+    start = "inBCSMissing", start_side = "bottom",
+    end = "inBCS1", end_side = "top",
+    start_x = 0, start_y = 45
+  ) %>%
+  ggconsort::consort_arrow_add(
+    end = "exclBCS1", end_side = "left",
+    start_x = 0, start_y = 35
+  ) %>%
+  ggconsort::consort_box_add(
+    "exclDx", 30, 20,
+    ggconsort::cohort_count_adorn(cohorts, exclDx)
+  ) %>%
+  ggconsort::consort_box_add(
+    "inDx", 0, 15,
+    ggconsort::cohort_count_adorn(cohorts, inDx)
+  ) %>%
+  ggconsort::consort_arrow_add(
+    start = "inBCS1", start_side = "bottom",
+    end = "inDx", end_side = "top",
+    start_x = 0, start_y = 45
+  ) %>%
+  ggconsort::consort_arrow_add(
+    end = "exclDx", end_side = "left",
+    start_x = 0, start_y = 20
+  ) %>%
+  ggconsort::consort_box_add(
+    "exclBreed", 30, 8,
+    ggconsort::cohort_count_adorn(cohorts, exclBreed)
+  ) %>%
+  ggconsort::consort_box_add(
+    "inBreed", 0, 4,
+    ggconsort::cohort_count_adorn(cohorts, inBreed)
+  ) %>%
+  ggconsort::consort_arrow_add(
+    start = "inDx", start_side = "bottom",
+    end = "inBreed", end_side = "top",
+    start_x = 0, start_y = 15
+  ) %>%
+  ggconsort::consort_arrow_add(
+    end = "exclBreed", end_side = "left",
+    start_x = 0, start_y = 8
+  )
+
+png("../output/fig/consort-diagram.png", width = 1100, height = 720)
+consort %>%
+  ggplot2::ggplot() +
+  geom_consort() +
+  theme_consort() +
+  theme_consort(margin_h = 35, margin_v = 1)
+dev.off()
