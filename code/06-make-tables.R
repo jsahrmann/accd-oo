@@ -3,13 +3,27 @@
 # Produce output for manuscript tables.
 #
 # John Sahrmann
-# 20220731
+# 20220829
 
 
 # Setup --------------------------------------------------------------
 
+library(data.table)
+library(lubridate)
 library(openxlsx)
 library(purrr)
+
+
+# Constants ----------------------------------------------------------
+
+data_dir <-
+  "%HOME%\\Dropbox\\Banfield Dog Data\\Data Files from Banfield\\"
+
+new_col_names <- c(
+  "id", "sex", "birth_date", "breed", "mixed_breed", "neuter_date",
+  "first_visit_date", "first_overweight_date", "state", "visit_date",
+  "intact", "visit_reason", "wellness_plan", "bcs", "weight",
+  "dx_ccl", "dx_hypothyroidism", "dx_hyperthyroidism")
 
 
 # Function definitions -----------------------------------------------
@@ -36,6 +50,28 @@ median_iqr <- function(x, y, z, digits = 0) {
 # Input data ---------------------------------------------------------
 
 source("./02-read-cohort.R")
+
+visits_all <- data.table::fread(
+  cmd = paste0("unzip -p \"", data_dir, "R2020_ACCD_DATA.zip\""),
+  na.strings = "null")
+data.table::setnames(visits_all, new_col_names)
+
+date_cols <- grep("date", colnames(visits_all), value = TRUE)
+visits_all[,
+  (date_cols) := lapply(.SD, mdy), .SDcols = date_cols]
+
+
+# Visits during follow-up --------------------------------------------
+
+visits_fu <- merge(
+  dat, visits_all, by = "id", all.x = TRUE
+)[
+  visit_date >= index_date & visit_date <= oo_event_date,
+  .(n_visits_fu = .N),
+  by = .(id, sn, oo_t2e)
+][,
+  visits_per_year_fu := n_visits_fu / oo_t2e * 365.25
+]
 
 
 # Table 1 - Cohort characteristics -----------------------------------
@@ -78,15 +114,15 @@ sn_size4 <- with(dat1, table(size, sn))["Large", ]
 sn_size5 <- with(dat1, table(size, sn))["Giant", ]
 sn_wellnessy <- with(dat1, table(wellness_plan, sn))["1", ]
 sn_wellnessn <- with(dat1, table(wellness_plan, sn))["0", ]
-sn_visits_q2 <- with(dat1, tapply(visitsPerYear, sn, median))
-sn_visits_q1 <- with(dat1, tapply(visitsPerYear, sn, quantile, .25))
-sn_visits_q3 <- with(dat1, tapply(visitsPerYear, sn, quantile, .75))
 oo_fu_q2 <- with(dat1, tapply(oo_t2e, sn, median))
 oo_fu_q1 <- with(dat1, tapply(oo_t2e, sn, quantile, .25))
 oo_fu_q3 <- with(dat1, tapply(oo_t2e, sn, quantile, .75))
 ob_fu_q2 <- with(dat1, tapply(obese_t2e, sn, median))
 ob_fu_q1 <- with(dat1, tapply(obese_t2e, sn, quantile, .25))
 ob_fu_q3 <- with(dat1, tapply(obese_t2e, sn, quantile, .75))
+sn_visits_q2 <- with(visits_fu, tapply(visits_per_year_fu, sn, median))
+sn_visits_q1 <- with(visits_fu, tapply(visits_per_year_fu, sn, quantile, .25))
+sn_visits_q3 <- with(visits_fu, tapply(visits_per_year_fu, sn, quantile, .75))
 
 row_text <- list(); i <- 1
 row_text[[i]] <- c(
@@ -159,17 +195,17 @@ row_text[[i]] <- c(
   purrr::map2_chr(sn_wellnessn, sn_n, n_percent)
 ); i <- i + 1
 row_text[[i]] <- c(
-  "Visits per year (median, IQR)",
-  purrr::pmap_chr(
-    list(sn_visits_q2, sn_visits_q1, sn_visits_q3), median_iqr)
-); i <- i + 1
-row_text[[i]] <- c(
   "Follow-up in days for overweight/obese (median, IQR)",
   purrr::pmap_chr(list(oo_fu_q2, oo_fu_q1, oo_fu_q3), median_iqr)
 ); i <- i + 1
 row_text[[i]] <- c(
   "Follow-up in days for obese (median, IQR)",
   purrr::pmap_chr(list(ob_fu_q2, ob_fu_q1, ob_fu_q3), median_iqr)
+); i <- i + 1
+row_text[[i]] <- c(
+  "Visits per year during follow-up (median, IQR)",
+  purrr::pmap_chr(
+    list(sn_visits_q2, sn_visits_q1, sn_visits_q3), median_iqr)
 ); i <- i + 1
 
 # Assemble the table.

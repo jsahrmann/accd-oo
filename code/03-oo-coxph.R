@@ -4,7 +4,7 @@
 # for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220724
+# 20220829
 
 
 # Setup --------------------------------------------------------------
@@ -53,7 +53,7 @@ summary(model1, visitsPerYear = 1:2)
 # SN effect -----------------------
 
 sn_ref_pts <- as.data.table(
-  define_sn_reference_points(ages = seq(0.5, 6, by = 0.5)))
+  define_sn_reference_points(ages = c(0.25, seq(0.5, 6, by = 0.5))))
 
 sn_est <- evaluate_sn_reference_points(sn_ref_pts, model1)
 
@@ -63,7 +63,7 @@ sn_results <- cbind(sn_ref_pts, sn_est)
 # Age effect among SN -------------
 
 age_among_sn_ref_pts <- data.table::as.data.table(
-  define_age_reference_points(ages = seq(0.5, 6, by = 0.5)))
+  define_age_reference_points(ages = c(0.25, seq(0.5, 6, by = 0.5))))
 
 age_among_sn_est <- evaluate_age_among_sn_reference_points(
   age_among_sn_ref_pts, model1)

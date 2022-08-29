@@ -3,7 +3,7 @@
 # Plot results for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220724
+# 20220829
 
 
 # Setup --------------------------------------------------------------
@@ -20,6 +20,9 @@ library(pdftools)
 color3 <- rev(paletteer::paletteer_c("viridis::viridis", 3))
 color5 <- rev(paletteer::paletteer_c("viridis::viridis", 5))
 
+line_size <- 0.4
+rel_point_size <- 1.5
+
 
 # Plotting  ----------------------------------------------------------
 
@@ -33,9 +36,9 @@ ds[,
   `:=`(
     wt_pctl_char = as.character(wt_pctl),
     age = data.table::fcase(
-      wt_pctl == 25, age - 0.1,
+      wt_pctl == 25, age - 0.05,
       wt_pctl == 50, age,
-      wt_pctl == 75, age + 0.1
+      wt_pctl == 75, age + 0.05
     )
   )
 ]
@@ -48,7 +51,7 @@ ds[sex == "Female"] %>%
   ggplot(
     aes(x = age, y = hr, ymin = lo, ymax = hi, colour = wt_pctl_char)
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   scale_y_log10() +
   scale_colour_manual("Weight Quartile", values = color3) +
@@ -70,7 +73,7 @@ ds[sex == "Male"] %>%
   ggplot(
     aes(x = age, y = hr, ymin = lo, ymax = hi, colour = wt_pctl_char)
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   scale_y_log10() +
   scale_colour_manual("Weight Quartile", values = color3) +
@@ -102,11 +105,11 @@ ds[,
   `:=`(
     wt_pctl_char = as.character(wt_pctl),
     age = data.table::fcase(
-      size == "Toy and Small", age - 0.12,
-      size == "Medium", age - 0.06,
+      size == "Toy and Small", age - 0.06,
+      size == "Medium", age - 0.03,
       size == "Standard", age,
-      size == "Large", age + 0.06,
-      size == "Giant", age + 0.12
+      size == "Large", age + 0.03,
+      size == "Giant", age + 0.06
     )
   )
 ]
@@ -119,10 +122,9 @@ ds[wt_pctl == 50] %>%
   ggplot(
     aes(x = age, y = hr, ymin = lo, ymax = hi, colour = size)
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   scale_y_log10() +
-  labs(title = "Dogs at Median Weight") +
   xlab("\nAge at Index (Years)") +
   ylab("Hazard Ratio for Gonadectomy\n") +
   scale_colour_manual("Breed Size", values = color5) +
@@ -140,11 +142,11 @@ ds <- data.table::copy(age_among_sn_results)
 ds[,
   `:=`(
     comparator_age = data.table::fcase(
-      size == "Toy and Small", comparator_age - 0.12,
-      size == "Medium", comparator_age - 0.06,
+      size == "Toy and Small", comparator_age - 0.06,
+      size == "Medium", comparator_age - 0.03,
       size == "Standard", comparator_age,
-      size == "Large", comparator_age + 0.06,
-      size == "Giant", comparator_age + 0.12
+      size == "Large", comparator_age + 0.03,
+      size == "Giant", comparator_age + 0.06
     ),
     reference_age = factor(
       reference_age,
@@ -154,8 +156,8 @@ ds[,
           "Gonadectomized at",
           times = length(unique(reference_age))),
         unique(reference_age),
-        c("Years", "Year",
-          rep("Years", times = length(unique(reference_age)) - 2))
+        c("Years", "Years", "Year",
+          rep("Years", times = length(unique(reference_age)) - 3))
       )
     )
   )
@@ -165,13 +167,15 @@ cairo_pdf(
   "../output/fig/fig-oo-age-effect-among-SN-all-years-female-col.pdf",
   width = 13, height = 8.5
 )
-ds[sex == "Female"] %>%
+ds[
+  sex == "Female" & reference_age != "Gonadectomized at 5.5 Years"
+] %>%
   ggplot(
     aes(
       x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size
     )
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   labs(title = "Female Dogs") +
   xlab("\nAge at Gonadectomy (Years)") +
@@ -192,13 +196,15 @@ cairo_pdf(
   "../output/fig/fig-oo-age-effect-among-SN-all-years-male-col.pdf",
   width = 13, height = 8.5
 )
-ds[sex == "Male"] %>%
+ds[
+  sex == "Male" & reference_age != "Gonadectomized at 5.5 Years"
+] %>%
   ggplot(
     aes(
       x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size
     )
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   labs(title = "Male Dogs") +
   xlab("\nAge at Gonadectomy (Years)") +
@@ -234,10 +240,9 @@ ds[reference_age == "Gonadectomized at 1 Year"] %>%
     aes(
       x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size)
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   scale_y_log10() +
-  labs(title = "Compared to Dogs Gonadectomized at 1 Year") +
   xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_colour_manual("Breed Size", values = color5) +
@@ -260,9 +265,9 @@ ds <- data.table::copy(sn_results)[,
   `:=`(
     wt_pctl_char = as.character(wt_pctl),
     age = data.table::fcase(
-      wt_pctl == 25, age - 0.1,
+      wt_pctl == 25, age - 0.05,
       wt_pctl == 50, age,
-      wt_pctl == 75, age + 0.1
+      wt_pctl == 75, age + 0.05
     )
   )
 ]
@@ -275,7 +280,7 @@ ds[sex == "Female"] %>%
   ggplot(
     aes(x = age, y = hr, ymin = lo, ymax = hi, colour = wt_pctl_char)
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   scale_y_log10() +
   scale_colour_manual("Weight Quartile", values = color3) +
@@ -297,7 +302,7 @@ ds[sex == "Male"] %>%
   ggplot(
     aes(x = age, y = hr, ymin = lo, ymax = hi, colour = wt_pctl_char)
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   scale_y_log10() +
   scale_colour_manual("Weight Quartile", values = color3) +
@@ -314,7 +319,7 @@ dev.off()
 pdftools::pdf_combine(
   c("../output/fig/fig-ob-sn-effect-female-all-weights-col.pdf",
     "../output/fig/fig-ob-sn-effect-male-all-weights-col.pdf"),
-  "../output/fig/sFigure 4 ob-sn-effect-all-weights-col.pdf"
+  "../output/fig/sFigure 3 ob-sn-effect-all-weights-col.pdf"
 )
 file.remove(
   c("../output/fig/fig-ob-sn-effect-female-all-weights-col.pdf",
@@ -329,27 +334,26 @@ ds[,
   `:=`(
     wt_pctl_char = as.character(wt_pctl),
     age = data.table::fcase(
-      size == "Toy and Small", age - 0.12,
-      size == "Medium", age - 0.06,
+      size == "Toy and Small", age - 0.06,
+      size == "Medium", age - 0.03,
       size == "Standard", age,
-      size == "Large", age + 0.06,
-      size == "Giant", age + 0.12
+      size == "Large", age + 0.03,
+      size == "Giant", age + 0.06
     )
   )
 ]
 
 cairo_pdf(
-  "../output/fig/sFigure 3 ob-sn-effect-median-weight-col.pdf",
+  "../output/fig/Figure 4 ob-sn-effect-median-weight-col.pdf",
   width = 8, height = 6
 )
 ds[wt_pctl == 50] %>%
   ggplot(
     aes(x = age, y = hr, ymin = lo, ymax = hi, colour = size)
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   scale_y_log10() +
-  labs(title = "Dogs at Median Weight") +
   xlab("\nAge at Index (Years)") +
   ylab("Hazard Ratio for Gonadectomy\n") +
   scale_colour_manual("Breed Size", values = color5) +
@@ -367,11 +371,11 @@ ds <- data.table::copy(age_among_sn_results)
 ds[,
   `:=`(
     comparator_age = data.table::fcase(
-      size == "Toy and Small", comparator_age - 0.12,
-      size == "Medium", comparator_age - 0.06,
+      size == "Toy and Small", comparator_age - 0.06,
+      size == "Medium", comparator_age - 0.03,
       size == "Standard", comparator_age,
-      size == "Large", comparator_age + 0.06,
-      size == "Giant", comparator_age + 0.12
+      size == "Large", comparator_age + 0.03,
+      size == "Giant", comparator_age + 0.06
     ),
     reference_age = factor(
       reference_age,
@@ -381,8 +385,8 @@ ds[,
           "Gonadectomized at",
           times = length(unique(reference_age))),
         unique(reference_age),
-        c("Years", "Year",
-          rep("Years", times = length(unique(reference_age)) - 2))
+        c("Years", "Years", "Year",
+          rep("Years", times = length(unique(reference_age)) - 3))
       )
     )
   )
@@ -392,13 +396,15 @@ cairo_pdf(
   "../output/fig/fig-ob-age-effect-among-SN-all-years-female-col.pdf",
   width = 13, height = 8.5
 )
-ds[sex == "Female"] %>%
+ds[
+  sex == "Female" & reference_age != "Gonadectomized at 5.5 Years"
+] %>%
   ggplot(
     aes(
       x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size
     )
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   labs(title = "Female Dogs") +
   xlab("\nAge at Gonadectomy (Years)") +
@@ -416,13 +422,15 @@ cairo_pdf(
   "../output/fig/fig-ob-age-effect-among-SN-all-years-male-col.pdf",
   width = 13, height = 8.5
 )
-ds[sex == "Male"] %>%
+ds[
+  sex == "Male" & reference_age != "Gonadectomized at 5.5 Years"
+] %>%
   ggplot(
     aes(
       x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size
     )
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   labs(title = "Male Dogs") +
   xlab("\nAge at Gonadectomy (Years)") +
@@ -439,7 +447,7 @@ dev.off()
 pdftools::pdf_combine(
   c("../output/fig/fig-ob-age-effect-among-SN-all-years-female-col.pdf",
     "../output/fig/fig-ob-age-effect-among-SN-all-years-male-col.pdf"),
-  "../output/fig/sFigure 6 ob-age-effect-among-SN-all-years-col.pdf"
+  "../output/fig/sFigure 4 ob-age-effect-among-SN-all-years-col.pdf"
 )
 file.remove(
   c("../output/fig/fig-ob-age-effect-among-SN-all-years-female-col.pdf",
@@ -447,7 +455,7 @@ file.remove(
 )
 
 cairo_pdf(
-  "../output/fig/sFigure 5 ob-age-effect-among-SN-1-year-col.pdf",
+  "../output/fig/Figure 5 ob-age-effect-among-SN-1-year-col.pdf",
   width = 7.5, height = 6.5
 )
 ds[reference_age == "Gonadectomized at 1 Year"] %>%
@@ -455,10 +463,9 @@ ds[reference_age == "Gonadectomized at 1 Year"] %>%
     aes(
       x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size)
   ) +
-  geom_pointrange() +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   scale_y_log10() +
-  labs(title = "Compared to Dogs Gonadectomized at 1 Year") +
   xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_colour_manual("Breed Size", values = color5) +
