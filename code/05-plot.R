@@ -3,7 +3,7 @@
 # Plot results for the ACC&D overweight/obesity analysis.
 #
 # John Sahrmann
-# 20220829
+# 20221127
 
 
 # Setup --------------------------------------------------------------
@@ -115,7 +115,7 @@ ds[,
 ]
 
 cairo_pdf(
-  "../output/fig/Figure 2 oo-sn-effect-median-weight-col.pdf",
+  "../output/fig/Figure2_20221127.pdf",
   width = 8, height = 6
 )
 ds[wt_pctl == 50] %>%
@@ -124,7 +124,30 @@ ds[wt_pctl == 50] %>%
   ) +
   geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
-  scale_y_log10() +
+  scale_y_continuous(trans = "log", breaks = c(1, 3, 5)) +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
+  scale_colour_manual("Breed Size", values = color5) +
+  facet_wrap(vars(sex)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  "../output/fig/Figure2_commonY_20221127.pdf",
+  width = 8, height = 6
+)
+ds[wt_pctl == 50] %>%
+  ggplot(
+    aes(x = age, y = hr, ymin = lo, ymax = hi, colour = size)
+  ) +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
+  geom_line() +
+  scale_y_continuous(
+    trans = "log", limits = c(0.6, 9.5), breaks = c(1, 3, 5)
+  ) +
   xlab("\nAge at Index (Years)") +
   ylab("Hazard Ratio for Gonadectomy\n") +
   scale_colour_manual("Breed Size", values = color5) +
@@ -232,7 +255,7 @@ file.remove(
 )
 
 cairo_pdf(
-  "../output/fig/Figure 3 oo-age-effect-among-SN-1-year-col.pdf",
+  "../output/fig/Figure3_20221127.pdf",
   width = 7.5, height = 6.5
 )
 ds[reference_age == "Gonadectomized at 1 Year"] %>%
@@ -242,7 +265,31 @@ ds[reference_age == "Gonadectomized at 1 Year"] %>%
   ) +
   geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
-  scale_y_log10() +
+  scale_y_continuous(trans = "log", breaks = c(0.7, 1, 2)) +
+  xlab("\nAge at Gonadectomy (Years)") +
+  ylab("Hazard Ratio for Age\n") +
+  scale_colour_manual("Breed Size", values = color5) +
+  facet_wrap(vars(sex)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  "../output/fig/Figure3_commonY_20221127.pdf",
+  width = 7.5, height = 6.5
+)
+ds[reference_age == "Gonadectomized at 1 Year"] %>%
+  ggplot(
+    aes(
+      x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size)
+  ) +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
+  geom_line() +
+  scale_y_continuous(
+    trans = "log", breaks = c(0.3, 1, 3), limits = c(0.3, 6.5)
+  ) +
   xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_colour_manual("Breed Size", values = color5) +
@@ -344,7 +391,7 @@ ds[,
 ]
 
 cairo_pdf(
-  "../output/fig/Figure 4 ob-sn-effect-median-weight-col.pdf",
+  "../output/fig/Figure4_20221127.pdf",
   width = 8, height = 6
 )
 ds[wt_pctl == 50] %>%
@@ -353,7 +400,30 @@ ds[wt_pctl == 50] %>%
   ) +
   geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
-  scale_y_log10() +
+  scale_y_continuous(trans = "log", breaks = c(1, 3, 5)) +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
+  scale_colour_manual("Breed Size", values = color5) +
+  facet_wrap(vars(sex)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  "../output/fig/Figure4_commonY_20221127.pdf",
+  width = 8, height = 6
+)
+ds[wt_pctl == 50] %>%
+  ggplot(
+    aes(x = age, y = hr, ymin = lo, ymax = hi, colour = size)
+  ) +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
+  geom_line() +
+  scale_y_continuous(
+    trans = "log", breaks = c(1, 3, 5), limits = c(0.6, 9.5)
+  ) +
   xlab("\nAge at Index (Years)") +
   ylab("Hazard Ratio for Gonadectomy\n") +
   scale_colour_manual("Breed Size", values = color5) +
@@ -455,7 +525,7 @@ file.remove(
 )
 
 cairo_pdf(
-  "../output/fig/Figure 5 ob-age-effect-among-SN-1-year-col.pdf",
+  "../output/fig/Figure5_20221127.pdf",
   width = 7.5, height = 6.5
 )
 ds[reference_age == "Gonadectomized at 1 Year"] %>%
@@ -465,7 +535,31 @@ ds[reference_age == "Gonadectomized at 1 Year"] %>%
   ) +
   geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
-  scale_y_log10() +
+  scale_y_continuous(trans = "log", breaks = c(0.3, 1, 3)) +
+  xlab("\nAge at Gonadectomy (Years)") +
+  ylab("Hazard Ratio for Age\n") +
+  scale_colour_manual("Breed Size", values = color5) +
+  facet_wrap(vars(sex)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
+
+cairo_pdf(
+  "../output/fig/Figure5_commonY_20221127.pdf",
+  width = 7.5, height = 6.5
+)
+ds[reference_age == "Gonadectomized at 1 Year"] %>%
+  ggplot(
+    aes(
+      x = comparator_age, y = hr, ymin = lo, ymax = hi, colour = size)
+  ) +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
+  geom_line() +
+  scale_y_continuous(
+    trans = "log", breaks = c(0.3, 1, 3), limits = c(0.3, 6.5)
+  ) +
   xlab("\nAge at Gonadectomy (Years)") +
   ylab("Hazard Ratio for Age\n") +
   scale_colour_manual("Breed Size", values = color5) +

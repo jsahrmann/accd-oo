@@ -3,7 +3,7 @@
 # Produce output for manuscript tables.
 #
 # John Sahrmann
-# 20220829
+# 20221126
 
 
 # Setup --------------------------------------------------------------
@@ -59,6 +59,14 @@ data.table::setnames(visits_all, new_col_names)
 date_cols <- grep("date", colnames(visits_all), value = TRUE)
 visits_all[,
   (date_cols) := lapply(.SD, mdy), .SDcols = date_cols]
+
+# Print results for table from Valerie's questions.
+dat[,
+  sum(oo_event), by = .(size, sex)
+]
+dat[,
+  sum(obese_event), by = .(size, sex)
+]
 
 
 # Visits during follow-up --------------------------------------------
