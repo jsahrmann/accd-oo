@@ -42,6 +42,7 @@ visits_all <- data.table::fread(
   cmd = paste0("unzip -p \"", data_dir, "R2020_ACCD_DATA.zip\""),
   na.strings = "null")
 )  # 6--21 s
+
 data.table::setnames(visits_all, new_col_names)
 
 # Recast columns with dates.
@@ -62,6 +63,42 @@ breedSizes <- readxl::read_excel(
   ) %>%
   data.table::as.data.table()
 
+###
+# dogs_all <- visits_all[,
+#   lapply(.SD, data.table::first), .SDcols = "neuter_date",
+#   by = id
+# ]
+# dogs_all[, yy := lubridate::year(neuter_date)]
+# table(dogs_all$yy, useNA = "ifany")
+# round(proportions(table(dogs_all$yy, useNA = "ifany"))*100, 1)
+# dogs_all %>%
+#   filter(!is.na(yy)) %$%
+#   round(proportions(table(yy, useNA = "ifany"))*100, 1)
+###
+
+###
+# visits_all[, sn := as.integer(!is.na(neuter_date))]
+# mean(visits_all$sn)
+#> 0.6248847
+# visits_2013 <- visits_all[
+#   lubridate::year(visit_date) == 2013
+# ][,
+#   `:=`(
+#     sn = data.table::fifelse(
+#       !is.na(neuter_date) & lubridate::year(neuter_date) == 2013,
+#       1, 0),
+#     index_date = data.table::fifelse(
+#       !is.na(neuter_date) & lubridate::year(neuter_date) == 2013,
+#       neuter_date, min(visit_date))
+#   ),
+#   by = id
+# ]
+# dogs_a13 <- visits_2013[,
+#   lapply(.SD, max), by = id, .SDcols = c("sn", "index_date")
+# ]
+# mean(dogs_a13$sn)
+# readr::write_csv(visits_2013, "~/Desktop/visits_2013.csv")
+###
 
 # Data management ----------------------------------------------------
 
@@ -85,10 +122,20 @@ visits_2014ButNotIfSNIn2013 <- visits_all[
   by = id
 ]
 
+###
+# mean(visits_2014ButNotIfSNIn2013$sn)
+#> 0.4032074
+###
+
 # Make a data set of unique dogs in this sample for later merging.
 dogs_a14 <- visits_2014ButNotIfSNIn2013[,
   lapply(.SD, first), by = id, .SDcols = c("sn", "index_date")
 ]
+
+###
+# mean(dogs_a14$sn)
+#> 0.2566818
+###
 
 # Select all visits for dogs in this sample.
 visits_a14_all <- merge(dogs_a14, visits_all, by = "id")
@@ -354,6 +401,23 @@ dogs_outcomeAndCensoringDates <- visits_final_postIndex[,
     oo_date_earliest = min(oo_date, na.rm = TRUE),
     obese_date_earliest = min(obese_date, na.rm = TRUE)),
   by = .(id, index_date)]
+
+###
+dogs_out2 <- dogs_final[,
+  .(id, sn)
+][
+  dogs_outcomeAndCensoringDates, on = "id"
+]
+with(dogs_out2, table(sn, useNA = "ifany"))
+#> sn
+#>      0      1
+#> 109467  45732
+with(dogs_out2, proportions(table(sn, useNA = "ifany")))
+#> sn
+#>         0         1
+#> 0.7053332 0.2946668
+sum(!is.infinite(dogs_out2$neuter_date_after2014))
+#> 9625
 
 # For dogs who never experience a certain type of outcome or censoring
 # event (e.g., dogs never diagnosed with hypothyroidism), the

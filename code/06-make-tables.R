@@ -219,588 +219,134 @@ openxlsx::write.xlsx(
 )
 
 
-# sTable 1 - Unadjusted SN effect estimates  -------------------------
-
-# Get group-specific counts.
-sn_n <- table(dat$sn)
-
-# Get outcome counts.
-oo_ct <- with(dat, tapply(oo_event, sn, sum))
-# Compute total length of follow-up in years.
-oo_fu <- with(dat, tapply(oo_t2e, sn, sum) / 365.25)
-# Compute crude incidence rates.
-oo_rate <- oo_ct / oo_fu * 1000
-# Compute the rate ratio and confidence limits. See Rothman et
-# al. (2008, p 244).
-oo_log_rate_ratio <- log(
-  oo_rate[["Spayed/neutered"]] / oo_rate[["Intact"]])
-oo_log_rate_ratio_se <- sqrt(sum(1 / oo_ct))
-names(oo_log_rate_ratio_se) <- NULL
-oo_rate_ratio <- exp(oo_log_rate_ratio)
-oo_rate_ratio_ci <- exp(
-  oo_log_rate_ratio + c(-1, 1) * qnorm(.975) * oo_log_rate_ratio_se)
+# Exports ------------------------------------------------------------
 
 
-# Repeat for obesity outcome.
-ob_ct <- with(dat, tapply(obese_event, sn, sum))
-ob_fu <- with(dat, tapply(obese_t2e, sn, sum) / 365.25)
-ob_rate <- ob_ct / ob_fu * 1000
-ob_log_rate_ratio <- log(
-  ob_rate[["Spayed/neutered"]] / ob_rate[["Intact"]])
-ob_log_rate_ratio_se <- sqrt(sum(1 / ob_ct))
-names(ob_log_rate_ratio_se) <- NULL
-ob_rate_ratio <- exp(ob_log_rate_ratio)
-ob_rate_ratio_ci <- exp(
-  ob_log_rate_ratio + c(-1, 1) * qnorm(.975) * ob_log_rate_ratio_se)
+## O/O ----------------------------
 
-row_text <- list(); i <- 1
-row_text[[i]] <- c(
-  "", paste0(names(sn_n), ", n = ", format(sn_n, big.mark = ","))
-); i <- i + 1
-row_text[[i]] <- c(
-  "Overweight/obese", rep("", length(sn_n))
-); i <- i + 1
-row_text[[i]] <- c(
-  "Outcome events, n",
-  purrr::map_chr(oo_ct, function(x) format(x, big.mark = ","))
-); i <- i + 1
-row_text[[i]] <- c(
-  "Total years of observation",
-  purrr::map_chr(oo_fu, function(x) {
-    format(round(x), big.mark = ",")
-  })
-); i <- i + 1
-row_text[[i]] <- c(
-  "Crude incidence rates per 1,000 years of observation",
-  purrr::map_chr(oo_rate, function(x) {
-    format(round(x, 1), nsmall = 1)
-  })
-); i <- i + 1
-row_text[[i]] <- c(
-  "Crude incidence rate ratio (95% CI)", "Ref",
-  paste0(
-    format(round(oo_rate_ratio, 2), nsmall = 2),
-    " (",
-    format(round(oo_rate_ratio_ci[[1]], 2), nsmall = 2),
-    ", ",
-    format(round(oo_rate_ratio_ci[[2]], 2), nsmall = 2),
-    ")"
-  )
-); i <- i + 1
-row_text[[i]] <- c(
-  "Obese", rep("", length(sn_n))
-); i <- i + 1
-row_text[[i]] <- c(
-  "Outcome events, n (%)",
-  purrr::map_chr(ob_ct, function(x) format(x, big.mark = ","))
-); i <- i + 1
-row_text[[i]] <- c(
-  "Total years of observation",
-  purrr::map_chr(ob_fu, function(x) {
-    format(round(x), big.mark = ",")
-  })
-); i <- i + 1
-row_text[[i]] <- c(
-  "Crude incidence rates per 1,000 years of observation",
-  purrr::map_chr(ob_rate, function(x) {
-    format(round(x, 1), nsmall = 1)
-  })
-); i <- i + 1
-row_text[[i]] <- c(
-  "Crude incidence rate ratio (95% CI)", "Ref",
-  paste0(
-    format(round(ob_rate_ratio, 2), nsmall = 2),
-    " (",
-    format(round(ob_rate_ratio_ci[[1]], 2), nsmall = 2),
-    ", ",
-    format(round(ob_rate_ratio_ci[[2]], 2), nsmall = 2),
-    ")"
-  )
-); i <- i + 1
+load(file = "../data/oo-results.Rdata")
 
-# Assemble the table.
-stable1 <- do.call(rbind, row_text) |>
-  as.data.frame()
 
-# Save the final output.
+## SN effect -----
+
+openxlsx::write.xlsx(sn_results, "../output/s_table3a.xlsx")
+
+
+## Age effect among SN
+
 openxlsx::write.xlsx(
-  stable1, file = "../output/s_table1.xlsx",
-  colNames = FALSE, colWidths = "auto"
-)
+  age_among_sn_results, "../output/s_table4a.xlsx")
 
 
-# sTable 2 - Unadjusted age among SN effect estimates  ---------------
+## Obesity ------------------------
 
-dat3 <- data.table::copy(dat)[
- sn == "Spayed/neutered",
-  age_group := data.table::fcase(
-    ageYearsX < 0.5, "3 mo to <6 mo",
-    0.5 <= ageYearsX & ageYearsX < 1, "6 mo to <1 y",
-    1 <= ageYearsX & ageYearsX < 2, "1 y to <2 y",
-    2 <= ageYearsX, "2+ y"
-  )
-][,
-  age_group := factor(
-    age_group,
-    levels = c(
-      "3 mo to <6 mo", "6 mo to <1 y", "1 y to <2 y", "2+ y")
-  )
-]
+load(file = "../data/ob-results.Rdata")
 
-# Get group-specific counts.
-age_n <- table(dat3$age_group)
 
-# Get outcome counts.
-oo_ct <- with(dat3, tapply(oo_event, age_group, sum))
-# Compute total length of follow-up in years.
-oo_fu <- with(dat3, tapply(oo_t2e, age_group, sum) / 365.25)
-# Compute crude incidence rates.
-oo_rate <- oo_ct / oo_fu * 1000
-# Compute the rate ratio and confidence limits. See Rothman et
-# al. (2008, p 244).
-oo_log_rate_ratio <- c(
-  log(oo_rate[["3 mo to <6 mo"]] / oo_rate[["6 mo to <1 y"]]),
-  log(oo_rate[["1 y to <2 y"]] / oo_rate[["6 mo to <1 y"]]),
-  log(oo_rate[["2+ y"]] / oo_rate[["6 mo to <1 y"]])
-)
-oo_log_rate_ratio_se <- sqrt(sum(1 / oo_ct))
-names(oo_log_rate_ratio_se) <- NULL
-oo_rate_ratio <- exp(oo_log_rate_ratio)
-oo_rate_ratio_lo <- exp(
-  oo_log_rate_ratio - qnorm(.975) * oo_log_rate_ratio_se)
-oo_rate_ratio_hi <- exp(
-  oo_log_rate_ratio + qnorm(.975) * oo_log_rate_ratio_se)
+## SN effect -----
 
-# Repeat for obesity outcome.
-ob_ct <- with(dat3, tapply(obese_event, age_group, sum))
-ob_fu <- with(dat3, tapply(obese_t2e, age_group, sum) / 365.25)
-ob_rate <- ob_ct / ob_fu * 1000
-ob_log_rate_ratio <- c(
-  log(ob_rate[["3 mo to <6 mo"]] / ob_rate[["6 mo to <1 y"]]),
-  log(ob_rate[["1 y to <2 y"]] / ob_rate[["6 mo to <1 y"]]),
-  log(ob_rate[["2+ y"]] / ob_rate[["6 mo to <1 y"]])
-)
-ob_log_rate_ratio_se <- sqrt(sum(1 / ob_ct))
-names(ob_log_rate_ratio_se) <- NULL
-ob_rate_ratio <- exp(ob_log_rate_ratio)
-ob_rate_ratio_lo <- exp(
-  ob_log_rate_ratio - qnorm(.975) * ob_log_rate_ratio_se)
-ob_rate_ratio_hi <- exp(
-  ob_log_rate_ratio + qnorm(.975) * ob_log_rate_ratio_se)
+openxlsx::write.xlsx(sn_results, "../output/s_table3b.xlsx")
 
-row_text <- list(); i <- 1
-row_text[[i]] <- c(
-  "", paste0(names(age_n), ", n = ", format(age_n, big.mark = ","))
-); i <- i + 1
-row_text[[i]] <- c(
-  "Overweight/obese", rep("", length(age_n))
-); i <- i + 1
-row_text[[i]] <- c(
-  "Outcome events, n",
-  purrr::map_chr(oo_ct, function(x) format(x, big.mark = ","))
-); i <- i + 1
-row_text[[i]] <- c(
-  "Total years of observation",
-  purrr::map_chr(oo_fu, function(x) {
-    format(round(x), big.mark = ",")
-  })
-); i <- i + 1
-row_text[[i]] <- c(
-  "Crude incidence rates per 1,000 years of observation",
-  purrr::map_chr(oo_rate, function(x) {
-    format(round(x, 1), nsmall = 1)
-  })
-); i <- i + 1
-row_text[[i]] <- c(
-  "Crude incidence rate ratio (95% CI)",
-  paste0(
-    format(round(oo_rate_ratio[[1]], 2), nsmall = 2),
-    " (",
-    format(round(oo_rate_ratio_lo[[1]], 2), nsmall = 2),
-    ", ",
-    format(round(oo_rate_ratio_hi[[1]], 2), nsmall = 2),
-    ")"
-  ),
-  "Ref",
-  paste0(
-    format(round(oo_rate_ratio[[2]], 2), nsmall = 2),
-    " (",
-    format(round(oo_rate_ratio_lo[[2]], 2), nsmall = 2),
-    ", ",
-    format(round(oo_rate_ratio_hi[[2]], 2), nsmall = 2),
-    ")"
-  ),
-  paste0(
-    format(round(oo_rate_ratio[[3]], 2), nsmall = 2),
-    " (",
-    format(round(oo_rate_ratio_lo[[3]], 2), nsmall = 2),
-    ", ",
-    format(round(oo_rate_ratio_hi[[3]], 2), nsmall = 2),
-    ")"
-  )
-); i <- i + 1
-row_text[[i]] <- c(
-  "Obese", rep("", length(age_n))
-); i <- i + 1
-row_text[[i]] <- c(
-  "Outcome events, n",
-  purrr::map_chr(ob_ct, function(x) format(x, big.mark = ","))
-); i <- i + 1
-row_text[[i]] <- c(
-  "Total years of observation",
-  purrr::map_chr(ob_fu, function(x) {
-    format(round(x), big.mark = ",")
-  })
-); i <- i + 1
-row_text[[i]] <- c(
-  "Crude incidence rates per 1,000 years of observation",
-  purrr::map_chr(ob_rate, function(x) {
-    format(round(x, 1), nsmall = 1)
-  })
-); i <- i + 1
-row_text[[i]] <- c(
-  "Crude incidence rate ratio (95% CI)",
-  paste0(
-    format(round(ob_rate_ratio[[1]], 2), nsmall = 2),
-    " (",
-    format(round(ob_rate_ratio_lo[[1]], 2), nsmall = 2),
-    ", ",
-    format(round(ob_rate_ratio_hi[[1]], 2), nsmall = 2),
-    ")"
-  ),
-  "Ref",
-  paste0(
-    format(round(ob_rate_ratio[[2]], 2), nsmall = 2),
-    " (",
-    format(round(ob_rate_ratio_lo[[2]], 2), nsmall = 2),
-    ", ",
-    format(round(ob_rate_ratio_hi[[2]], 2), nsmall = 2),
-    ")"
-  ),
-  paste0(
-    format(round(ob_rate_ratio[[3]], 2), nsmall = 2),
-    " (",
-    format(round(ob_rate_ratio_lo[[3]], 2), nsmall = 2),
-    ", ",
-    format(round(ob_rate_ratio_hi[[3]], 2), nsmall = 2),
-    ")"
-  )
-); i <- i + 1
 
-# Assemble the table.
-stable2 <- do.call(rbind, row_text) |>
-  as.data.frame()
+## Age effect among SN
 
-# Save the final output.
 openxlsx::write.xlsx(
-  stable2, file = "../output/s_table2.xlsx",
-  colNames = FALSE, colWidths = "auto"
-)
+  age_among_sn_results, "../output/s_table4b.xlsx")
 
 
-## Table X - Unadjusted SN effect estimates, large breeds ------------
 
-large <- subset(dat, size == "Large")
+# SN effect -----------------------
 
-sn_n <- table(large$sn)
+# Smallest difference in risk by SN
+sn_results[wt_pctl == 50][which.min(hr)]
+# Largest difference in risk by SN
+sn_results[wt_pctl == 50][which.max(hr)]
 
-oo_ct <- with(large, tapply(oo_event, sn, sum))
-oo_fu <- with(large, tapply(oo_t2e, sn, sum) / 365.25)
-oo_rate <- oo_ct / oo_fu * 1000
-oo_log_rate_ratio <- log(
-  oo_rate[["Spayed/neutered"]] / oo_rate[["Intact"]])
-oo_log_rate_ratio_se <- sqrt(sum(1 / oo_ct))
-names(oo_log_rate_ratio_se) <- NULL
-oo_rate_ratio <- exp(oo_log_rate_ratio)
-oo_rate_ratio_ci <- exp(
-  oo_log_rate_ratio + c(-1, 1) * qnorm(.975) * oo_log_rate_ratio_se)
+round(sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
+round(sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
 
-ob_ct <- with(large, tapply(obese_event, sn, sum))
-ob_fu <- with(large, tapply(obese_t2e, sn, sum) / 365.25)
-ob_rate <- ob_ct / ob_fu * 1000
-ob_log_rate_ratio <- log(
-  ob_rate[["Spayed/neutered"]] / ob_rate[["Intact"]])
-ob_log_rate_ratio_se <- sqrt(sum(1 / ob_ct))
-names(ob_log_rate_ratio_se) <- NULL
-ob_rate_ratio <- exp(ob_log_rate_ratio)
-ob_rate_ratio_ci <- exp(
-  ob_log_rate_ratio + c(-1, 1) * qnorm(.975) * ob_log_rate_ratio_se)
+# E-values
+sn_results[lo > 1][which.min(e_val)]
+sn_results[lo > 1][which.max(e_val)]
 
-row_text <- list()
-row_text[[1]] <- c("Large Breed Dogs", rep("", length(sn_n)))
-row_text[[2]] <- c(
-  "", paste0(names(sn_n), ", n = ", format(sn_n, big.mark = ","))
-)
-row_text[[3]] <- c("Overweight/obese", rep("", length(sn_n)))
-row_text[[4]] <- c(
-  "Outcome events, n",
-  purrr::map_chr(oo_ct, function(x) format(x, big.mark = ","))
-)
-row_text[[5]] <- c(
-  "Total years of observation",
-  purrr::map_chr(oo_fu, function(x) {
-    format(round(x), big.mark = ",")
-  })
-)
-row_text[[6]] <- c(
-  "Crude incidence rates per 1,000 years of observation",
-  purrr::map_chr(oo_rate, function(x) {
-    format(round(x, 1), nsmall = 1)
-  })
-)
-row_text[[7]] <- c(
-  "Crude incidence rate ratio (95% CI)", "Ref",
-  paste0(
-    format(round(oo_rate_ratio, 2), nsmall = 2),
-    " (",
-    format(round(oo_rate_ratio_ci[[1]], 2), nsmall = 2),
-    ", ",
-    format(round(oo_rate_ratio_ci[[2]], 2), nsmall = 2),
-    ")"
-  )
-)
-row_text[[8]] <- c("Obese", rep("", length(sn_n)))
-row_text[[9]] <- c(
-  "Outcome events, n (%)",
-  purrr::map_chr(ob_ct, function(x) format(x, big.mark = ","))
-)
-row_text[[10]] <- c(
-  "Total years of observation",
-  purrr::map_chr(ob_fu, function(x) {
-    format(round(x), big.mark = ",")
-  })
-)
-row_text[[11]] <- c(
-  "Crude incidence rates per 1,000 years of observation",
-  purrr::map_chr(ob_rate, function(x) {
-    format(round(x, 1), nsmall = 1)
-  })
-)
-row_text[[12]] <- c(
-  "Crude incidence rate ratio (95% CI)", "Ref",
-  paste0(
-    format(round(ob_rate_ratio, 2), nsmall = 2),
-    " (",
-    format(round(ob_rate_ratio_ci[[1]], 2), nsmall = 2),
-    ", ",
-    format(round(ob_rate_ratio_ci[[2]], 2), nsmall = 2),
-    ")"
-  )
-)
-
-# Assemble the table.
-table <- do.call(rbind, row_text)
-
-# Save the final output.
 write.table(
-  table, file = "../output/table_crude_large_breeds.csv",
-  sep = ",", row.names = FALSE, col.names = FALSE
+  sn_results, file = "../output/table-oo-sn-effect-all-weights.csv",
+  sep = ",", row.names = FALSE
 )
 
 
-## Table Y - Unadjusted SN effect estimates, Golden Retrievers -------
+# Age effect among SN -------------
 
-golden <- subset(dat, breed == "Golden Retriever")
+# Smallest difference in risk by SN
+age_among_sn_results[reference_age == 1.0][which.min(hr)]
 
-sn_n <- table(golden$sn)
+# Largest difference in risk by SN
+age_among_sn_results[wt_pctl == 50][which.max(hr)]
 
-oo_ct <- with(golden, tapply(oo_event, sn, sum))
-oo_fu <- with(golden, tapply(oo_t2e, sn, sum) / 365.25)
-oo_rate <- oo_ct / oo_fu * 1000
-oo_log_rate_ratio <- log(
-  oo_rate[["Spayed/neutered"]] / oo_rate[["Intact"]])
-oo_log_rate_ratio_se <- sqrt(sum(1 / oo_ct))
-names(oo_log_rate_ratio_se) <- NULL
-oo_rate_ratio <- exp(oo_log_rate_ratio)
-oo_rate_ratio_ci <- exp(
-  oo_log_rate_ratio + c(-1, 1) * qnorm(.975) * oo_log_rate_ratio_se)
+round(age_among_sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
+round(age_among_sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
 
-ob_ct <- with(golden, tapply(obese_event, sn, sum))
-ob_fu <- with(golden, tapply(obese_t2e, sn, sum) / 365.25)
-ob_rate <- ob_ct / ob_fu * 1000
-ob_log_rate_ratio <- log(
-  ob_rate[["Spayed/neutered"]] / ob_rate[["Intact"]])
-ob_log_rate_ratio_se <- sqrt(sum(1 / ob_ct))
-names(ob_log_rate_ratio_se) <- NULL
-ob_rate_ratio <- exp(ob_log_rate_ratio)
-ob_rate_ratio_ci <- exp(
-  ob_log_rate_ratio + c(-1, 1) * qnorm(.975) * ob_log_rate_ratio_se)
+# E-values
+age_among_sn_results[lo > 1][which.min(e_val)]
+age_among_sn_results[lo > 1][which.max(e_val)]
 
-row_text <- list()
-row_text[[1]] <- c("Golden Retrievers", rep("", length(sn_n)))
-row_text[[2]] <- c(
-  "", paste0(names(sn_n), ", n = ", format(sn_n, big.mark = ","))
-)
-row_text[[3]] <- c("Overweight/obese", rep("", length(sn_n)))
-row_text[[4]] <- c(
-  "Outcome events, n",
-  purrr::map_chr(oo_ct, function(x) format(x, big.mark = ","))
-)
-row_text[[5]] <- c(
-  "Total years of observation",
-  purrr::map_chr(oo_fu, function(x) {
-    format(round(x), big.mark = ",")
-  })
-)
-row_text[[6]] <- c(
-  "Crude incidence rates per 1,000 years of observation",
-  purrr::map_chr(oo_rate, function(x) {
-    format(round(x, 1), nsmall = 1)
-  })
-)
-row_text[[7]] <- c(
-  "Crude incidence rate ratio (95% CI)", "Ref",
-  paste0(
-    format(round(oo_rate_ratio, 2), nsmall = 2),
-    " (",
-    format(round(oo_rate_ratio_ci[[1]], 2), nsmall = 2),
-    ", ",
-    format(round(oo_rate_ratio_ci[[2]], 2), nsmall = 2),
-    ")"
-  )
-)
-row_text[[8]] <- c("Obese", rep("", length(sn_n)))
-row_text[[9]] <- c(
-  "Outcome events, n (%)",
-  purrr::map_chr(ob_ct, function(x) format(x, big.mark = ","))
-)
-row_text[[10]] <- c(
-  "Total years of observation",
-  purrr::map_chr(ob_fu, function(x) {
-    format(round(x), big.mark = ",")
-  })
-)
-row_text[[11]] <- c(
-  "Crude incidence rates per 1,000 years of observation",
-  purrr::map_chr(ob_rate, function(x) {
-    format(round(x, 1), nsmall = 1)
-  })
-)
-row_text[[12]] <- c(
-  "Crude incidence rate ratio (95% CI)", "Ref",
-  paste0(
-    format(round(ob_rate_ratio, 2), nsmall = 2),
-    " (",
-    format(round(ob_rate_ratio_ci[[1]], 2), nsmall = 2),
-    ", ",
-    format(round(ob_rate_ratio_ci[[2]], 2), nsmall = 2),
-    ")"
-  )
-)
-
-# Assemble the table.
-table <- do.call(rbind, row_text)
-
-# Save the final output.
 write.table(
-  table, file = "../output/table_crude_golden_retrievers.csv",
-  sep = ",", row.names = FALSE, col.names = FALSE
+  age_among_sn_results,
+  file = "../output/table-oo-age-effect-among-SN-all-years.csv",
+  sep = ",", row.names = FALSE
 )
 
 
-## Table Z - Unadjusted SN effect estimates, large breeds sans Golden
-## Retrievers --------------------------------------------------------
-
-large_sans_golden <- subset(
-  dat, size == "Large" & breed != "Golden Retriever")
-
-sn_n <- table(large_sans_golden$sn)
-
-oo_ct <- with(large_sans_golden, tapply(oo_event, sn, sum))
-oo_fu <- with(large_sans_golden, tapply(oo_t2e, sn, sum) / 365.25)
-oo_rate <- oo_ct / oo_fu * 1000
-oo_log_rate_ratio <- log(
-  oo_rate[["Spayed/neutered"]] / oo_rate[["Intact"]])
-oo_log_rate_ratio_se <- sqrt(sum(1 / oo_ct))
-names(oo_log_rate_ratio_se) <- NULL
-oo_rate_ratio <- exp(oo_log_rate_ratio)
-oo_rate_ratio_ci <- exp(
-  oo_log_rate_ratio + c(-1, 1) * qnorm(.975) * oo_log_rate_ratio_se)
+# Exports ------------------------------------------------------------
 
 
-ob_ct <- with(large_san_golden, tapply(obese_event, sn, sum))
-ob_fu <- with(large_sans_golden, tapply(obese_t2e, sn, sum) / 365.25)
-ob_rate <- ob_ct / ob_fu * 1000
-ob_log_rate_ratio <- log(
-  ob_rate[["Spayed/neutered"]] / ob_rate[["Intact"]])
-ob_log_rate_ratio_se <- sqrt(sum(1 / ob_ct))
-names(ob_log_rate_ratio_se) <- NULL
-ob_rate_ratio <- exp(ob_log_rate_ratio)
-ob_rate_ratio_ci <- exp(
-  ob_log_rate_ratio + c(-1, 1) * qnorm(.975) * ob_log_rate_ratio_se)
+# SN effect -----------------------
 
-row_text <- list()
-row_text[[1]] <- c(
-  "Large Breed Dogs, Excluding Golden Retrievers",
-  rep("", length(sn_n)))
-row_text[[2]] <- c(
-  "", paste0(names(sn_n), ", n = ", format(sn_n, big.mark = ","))
-)
-row_text[[3]] <- c("Overweight/obese", rep("", length(sn_n)))
-row_text[[4]] <- c(
-  "Outcome events, n",
-  purrr::map_chr(oo_ct, function(x) format(x, big.mark = ","))
-)
-row_text[[5]] <- c(
-  "Total years of observation",
-  purrr::map_chr(oo_fu, function(x) {
-    format(round(x), big.mark = ",")
-  })
-)
-row_text[[6]] <- c(
-  "Crude incidence rates per 1,000 years of observation",
-  purrr::map_chr(oo_rate, function(x) {
-    format(round(x, 1), nsmall = 1)
-  })
-)
-row_text[[7]] <- c(
-  "Crude incidence rate ratio (95% CI)", "Ref",
-  paste0(
-    format(round(oo_rate_ratio, 2), nsmall = 2),
-    " (",
-    format(round(oo_rate_ratio_ci[[1]], 2), nsmall = 2),
-    ", ",
-    format(round(oo_rate_ratio_ci[[2]], 2), nsmall = 2),
-    ")"
-  )
-)
-row_text[[8]] <- c("Obese", rep("", length(sn_n)))
-row_text[[9]] <- c(
-  "Outcome events, n (%)",
-  purrr::map_chr(ob_ct, function(x) format(x, big.mark = ","))
-)
-row_text[[10]] <- c(
-  "Total years of observation",
-  purrr::map_chr(ob_fu, function(x) {
-    format(round(x), big.mark = ",")
-  })
-)
-row_text[[11]] <- c(
-  "Crude incidence rates per 1,000 years of observation",
-  purrr::map_chr(ob_rate, function(x) {
-    format(round(x, 1), nsmall = 1)
-  })
-)
-row_text[[12]] <- c(
-  "Crude incidence rate ratio (95% CI)", "Ref",
-  paste0(
-    format(round(ob_rate_ratio, 2), nsmall = 2),
-    " (",
-    format(round(ob_rate_ratio_ci[[1]], 2), nsmall = 2),
-    ", ",
-    format(round(ob_rate_ratio_ci[[2]], 2), nsmall = 2),
-    ")"
-  )
-)
+# Smallest difference in risk by SN
+sn_results[wt_pctl == 50][which.min(hr)]
+# Largest difference in risk by SN
+sn_results[wt_pctl == 50][which.max(hr)]
 
-# Assemble the table.
-table <- do.call(rbind, row_text)
+round(sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
+round(sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
 
-# Save the final output.
+# Age with largest hazard ratio within each breed size class.
+sn_results[, max_hr := max(.SD), by = "size", .SDcols = "hr"]
+max_hrs <- sn_results[hr == max_hr]
+max_hrs
+# Age with largest hazard ratio within each breed size class and sex.
+sn_results[,
+  max_hr := max(.SD), by = c("size", "sex"), .SDcols = "hr"]
+max_hrs <- sn_results[hr == max_hr]
+max_hrs
+
+# E-values
+sn_results[lo > 1][which.min(e_val)]
+sn_results[lo > 1][which.max(e_val)]
+
 write.table(
-  table,
-  file = paste0(
-    "../output/",
-    "table_crude_large_breeds_excluding_golden_retrievers.csv"),
-  sep = ",", row.names = FALSE, col.names = FALSE
+  sn_results, file = "../output/table-ob-sn-effect-all-weights.csv",
+  sep = ",", row.names = FALSE
+)
+
+
+# Age effect among SN -------------
+
+# Smallest difference in risk by SN
+age_among_sn_results[reference_age == 1.0][which.min(hr)]
+
+# Largest difference in risk by SN
+age_among_sn_results[wt_pctl == 50][which.max(hr)]
+
+round(age_among_sn_results[wt_pctl == 50][which.max(hr)]$hr, digits = 2)
+round(age_among_sn_results[wt_pctl == 50][which.max(hr)]$hi, digits = 2)
+
+# E-values
+age_among_sn_results[lo > 1][which.min(e_val)]
+age_among_sn_results[lo > 1][which.max(e_val)]
+
+write.table(
+  age_among_sn_results,
+  file = "../output/table-ob-age-effect-among-SN-all-years.csv",
+  sep = ",", row.names = FALSE
 )
